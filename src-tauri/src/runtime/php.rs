@@ -86,6 +86,70 @@ impl PhpProvider {
         Ok(())
     }
 
+    /// Fix hardcoded build paths in php-config and phpize to point to the actual install dir
+    fn patch_build_paths(install_dir: &std::path::Path) -> Result<(), AppError> {
+        // The build prefix embedded in the pre-compiled package
+        // (we know it from release-runtimes.md: /tmp/php-package/{version})
+        let version = install_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("");
+        let build_prefix = format!("/tmp/php-package/{}", version);
+        let install_str = install_dir.display().to_string();
+
+        // Patch php-config
+        let php_config = install_dir.join("bin").join("php-config");
+        if php_config.exists() {
+            let content = std::fs::read_to_string(&php_config)?;
+            let patched = content.replace(&build_prefix, &install_str);
+            std::fs::write(&php_config, patched)?;
+        }
+
+        // Patch phpize
+        let phpize = install_dir.join("bin").join("phpize");
+        if phpize.exists() {
+            let content = std::fs::read_to_string(&phpize)?;
+            let patched = content.replace(&build_prefix, &install_str);
+            std::fs::write(&phpize, patched)?;
+        }
+
+        Ok(())
+    }
+
+    /// Ensure extension_dir is correctly set in php.ini
+    fn ensure_extension_dir(install_dir: &std::path::Path) -> Result<(), AppError> {
+        let php_ini = install_dir.join("lib").join("php.ini");
+        if !php_ini.exists() {
+            return Ok(());
+        }
+
+        let content = std::fs::read_to_string(&php_ini).unwrap_or_default();
+        if content.lines().any(|l| l.trim().starts_with("extension_dir")) {
+            return Ok(()); // already set
+        }
+
+        // Find the actual extension directory
+        let base = install_dir.join("lib").join("php").join("extensions");
+        let mut ext_dir = String::new();
+        if base.exists() {
+            if let Ok(entries) = std::fs::read_dir(&base) {
+                for entry in entries.flatten() {
+                    if entry.path().is_dir() && !entry.file_name().to_string_lossy().starts_with("._") {
+                        ext_dir = entry.path().display().to_string();
+                        break;
+                    }
+                }
+            }
+        }
+
+        if !ext_dir.is_empty() {
+            let new_content = format!("{}\nextension_dir = {}", content.trim_end(), ext_dir);
+            std::fs::write(&php_ini, new_content)?;
+        }
+
+        Ok(())
+    }
+
     /// Generate php-fpm.conf and www pool config for the installed PHP
     fn generate_fpm_configs(install_dir: &std::path::Path) -> Result<(), AppError> {
         let etc_dir = install_dir.join("etc");
@@ -289,6 +353,12 @@ impl RuntimeProvider for PhpProvider {
         let _ = std::fs::remove_dir_all(&extract_temp);
         let _ = std::fs::remove_file(&archive_path);
 
+        // Patch hardcoded build paths in php-config & phpize
+        if let Some(ref cb) = on_progress {
+            cb(55.0, "Patching build paths...".to_string());
+        }
+        Self::patch_build_paths(&install_dir)?;
+
         // Sign binaries for macOS Gatekeeper
         if let Some(ref cb) = on_progress {
             cb(60.0, "Signing binaries...".to_string());
@@ -318,6 +388,9 @@ impl RuntimeProvider for PhpProvider {
                     .replace("{INSTALL_DIR}", &install_dir.display().to_string()),
             )?;
         }
+
+        // Ensure extension_dir is set in php.ini
+        Self::ensure_extension_dir(&install_dir)?;
 
         // Generate php-fpm.conf and pool config
         if let Some(ref cb) = on_progress {
