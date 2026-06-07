@@ -2,8 +2,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Play, Square, RotateCw, Loader2 } from 'lucide-react';
-import { useAllServices, useStartService, useStopService } from '@/hooks/useServices';
+import { useAllServices, useStartService, useStopService, useRestartService } from '@/hooks/useServices';
+import { useDefaultVersion } from '@/hooks/useRuntimes';
 import type { ServiceStatus } from '@/types/service';
+
+// Map service type → runtime name for version lookup
+const runtimeName: Record<string, string> = {
+  nginx: 'nginx',
+  mysql: 'mysql',
+  'php-fpm': 'php',
+};
 
 const statusColors: Record<ServiceStatus, string> = {
   running: 'bg-green-500',
@@ -23,21 +31,74 @@ const statusLabels: Record<ServiceStatus, string> = {
   unknown: 'Unknown',
 };
 
-export function Dashboard() {
-  const { data: services, isLoading, mutate } = useAllServices();
+function ServiceCard({ serviceType, title }: { serviceType: string; title: string }) {
+  const { data: services, mutate } = useAllServices();
+  const { data: defaultVersion } = useDefaultVersion(runtimeName[serviceType]);
   const { mutate: startService, isLoading: isStarting } = useStartService();
   const { mutate: stopService, isLoading: isStopping } = useStopService();
+  const { mutate: restartService, isLoading: isRestarting } = useRestartService();
 
-  const handleStart = async (serviceType: string) => {
-    // TODO: Get default version for this service
-    await startService({ service_type: serviceType, version: '8.4.1' });
+  const service = services?.find((s) => s.id.startsWith(serviceType));
+  const status = service?.status ?? 'stopped';
+
+  const handleStart = async () => {
+    if (!defaultVersion) return;
+    await startService({ serviceType: serviceType, version: defaultVersion });
     mutate();
   };
 
-  const handleStop = async (serviceId: string) => {
-    await stopService({ service_id: serviceId });
+  const handleStop = async () => {
+    if (!service) return;
+    await stopService({ serviceId: service.id });
     mutate();
   };
+
+  const handleRestart = async () => {
+    if (!service) return;
+    await restartService({ serviceId: service.id });
+    mutate();
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Badge variant={status === 'running' ? 'default' : 'secondary'}>
+          <span className={`h-2 w-2 rounded-full mr-2 ${statusColors[status]}`} />
+          {statusLabels[status]}
+        </Badge>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          <div className="text-sm text-muted-foreground">
+            {defaultVersion && <span className="mr-3">v{defaultVersion}</span>}
+            {service?.pid ? `PID: ${service.pid}` : 'Not running'}
+            {service?.port ? ` • Port: ${service.port}` : ''}
+          </div>
+          <div className="flex gap-2">
+            {status === 'running' ? (
+              <>
+                <Button variant="outline" size="sm" onClick={handleStop} disabled={isStopping}>
+                  <Square className="h-3 w-3 mr-1" />Stop
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleRestart} disabled={isRestarting}>
+                  <RotateCw className="h-3 w-3 mr-1" />Restart
+                </Button>
+              </>
+            ) : (
+              <Button size="sm" onClick={handleStart} disabled={isStarting || !defaultVersion}>
+                <Play className="h-3 w-3 mr-1" />Start
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function Dashboard() {
+  const { data: services, isLoading } = useAllServices();
 
   if (isLoading) {
     return (
@@ -64,61 +125,9 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Service cards */}
-        {['nginx', 'mysql', 'php-fpm'].map((serviceType) => {
-          const service = services?.find((s) => s.id.startsWith(serviceType));
-          const status = service?.status ?? 'stopped';
-
-          return (
-            <Card key={serviceType}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium capitalize">
-                  {serviceType === 'php-fpm' ? 'PHP-FPM' : serviceType.toUpperCase()}
-                </CardTitle>
-                <Badge variant={status === 'running' ? 'default' : 'secondary'}>
-                  <span className={`h-2 w-2 rounded-full mr-2 ${statusColors[status]}`} />
-                  {statusLabels[status]}
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="text-sm text-muted-foreground">
-                    {service?.pid ? `PID: ${service.pid}` : 'Not running'}
-                    {service?.port ? ` • Port: ${service.port}` : ''}
-                  </div>
-                  <div className="flex gap-2">
-                    {status === 'running' ? (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => service && handleStop(service.id)}
-                          disabled={isStopping}
-                        >
-                          <Square className="h-3 w-3 mr-1" />
-                          Stop
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <RotateCw className="h-3 w-3 mr-1" />
-                          Restart
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => handleStart(serviceType)}
-                        disabled={isStarting}
-                      >
-                        <Play className="h-3 w-3 mr-1" />
-                        Start
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+        <ServiceCard serviceType="php-fpm" title="PHP-FPM" />
+        <ServiceCard serviceType="nginx" title="Nginx" />
+        <ServiceCard serviceType="mysql" title="MySQL" />
       </div>
     </div>
   );

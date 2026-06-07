@@ -114,7 +114,7 @@ impl PhpProvider {
              pid = {install}/var/run/php-fpm.pid\n\
              error_log = {logs}/php-fpm.log\n\
              log_level = notice\n\
-             daemonize = yes\n\
+             daemonize = no\n\
              emergency_restart_threshold = 5\n\
              emergency_restart_interval = 1m\n\
              process_control_timeout = 10s\n\
