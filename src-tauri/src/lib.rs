@@ -10,6 +10,7 @@ mod state;
 mod build;
 
 use state::AppState;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -70,6 +71,18 @@ pub fn run() {
             commands::nginx_config::add_hosts_entry,
             commands::nginx_config::remove_hosts_entry,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error building tauri application")
+        .run(|_app, event| {
+            if let tauri::RunEvent::Exit = event {
+                // Gracefully stop all managed services
+                let handle = tokio::runtime::Handle::current();
+                let _ = handle.block_on(async {
+                    if let Some(state) = _app.try_state::<AppState>() {
+                        let mut sidecar = state.sidecar.lock().await;
+                        sidecar.shutdown_all().await;
+                    }
+                });
+            }
+        });
 }

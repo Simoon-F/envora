@@ -200,6 +200,15 @@ impl SidecarManager {
             .filter(|p| p.config.id.starts_with(service_type))
             .collect()
     }
+
+    /// Shutdown all managed processes
+    pub async fn shutdown_all(&mut self) {
+        let uuids: Vec<String> = self.processes.keys().cloned().collect();
+        for uuid in uuids {
+            let _ = self.stop(&uuid, true).await;
+        }
+        self.processes.clear();
+    }
 }
 
 /// Check if a process is alive by PID
