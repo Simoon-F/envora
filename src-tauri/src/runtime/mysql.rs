@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 
@@ -9,15 +10,17 @@ use crate::download::extractor::ArchiveExtractor;
 use crate::download::manager::DownloadManager;
 
 // MySQL Community Server pre-built packages
+// Verify versions at: https://dev.mysql.com/downloads/mysql/
+// Note: MySQL 8.0.x releases stopped around 8.0.37
 const MYSQL_VERSIONS: &[(&str, &str)] = &[
     #[cfg(target_os = "macos")]
-    ("8.0.40", "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.40-macos14-arm64.tar.gz"),
-    #[cfg(target_os = "macos")]
     ("8.4.3", "https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.3-macos14-arm64.tar.gz"),
-    #[cfg(target_os = "windows")]
-    ("8.0.40", "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.40-winx64.zip"),
+    #[cfg(target_os = "macos")]
+    ("8.0.37", "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.37-macos14-arm64.tar.gz"),
     #[cfg(target_os = "windows")]
     ("8.4.3", "https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.3-winx64.zip"),
+    #[cfg(target_os = "windows")]
+    ("8.0.37", "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.37-winx64.zip"),
 ];
 
 pub struct MysqlProvider {
@@ -98,7 +101,7 @@ impl RuntimeProvider for MysqlProvider {
     async fn install(
         &self,
         version: &str,
-        on_progress: Option<ProgressCallback>,
+        mut on_progress: Option<ProgressCallback>,
     ) -> Result<RuntimeVersion, AppError> {
         let url = MYSQL_VERSIONS
             .iter()
@@ -112,9 +115,10 @@ impl RuntimeProvider for MysqlProvider {
         let install_dir = self.version_dir(version);
         std::fs::create_dir_all(&install_dir)?;
 
-        // Download
-        if let Some(ref cb) = on_progress {
-            cb(0.0, "Downloading MySQL...".to_string());
+        // Download with progress
+        let cb_arc = on_progress.take().map(Arc::new);
+        if let Some(ref cb) = cb_arc {
+            cb(0.0, format!("Downloading MySQL {}...", version));
         }
 
         let file_name = if url.ends_with(".tar.gz") {
@@ -123,11 +127,33 @@ impl RuntimeProvider for MysqlProvider {
             format!("mysql-{}.zip", version)
         };
         let archive_path = install_dir.join(&file_name);
-        DownloadManager::download(url, &archive_path, None).await?;
+
+        let download_cb: Option<crate::download::manager::ProgressCallback> =
+            cb_arc.as_ref().map(|arc| {
+                let arc = arc.clone();
+                let cb: crate::download::manager::ProgressCallback = Box::new(
+                    move |pct: f64, downloaded: u64, total: u64| {
+                        let app_pct = 20.0 * pct / 100.0;
+                        let msg = if total > 0 {
+                            format!("Downloading... {:.0}% ({:.1} / {:.1} MB)", pct, downloaded as f64 / 1_048_576.0, total as f64 / 1_048_576.0)
+                        } else {
+                            format!("Downloading... {:.1} MB", downloaded as f64 / 1_048_576.0)
+                        };
+                        arc(app_pct, msg);
+                    },
+                );
+                cb
+            });
+
+        DownloadManager::download(url, &archive_path, download_cb).await?;
+
+        let on_progress = cb_arc
+            .map(|arc| Arc::try_unwrap(arc).ok())
+            .flatten();
 
         // Extract
         if let Some(ref cb) = on_progress {
-            cb(30.0, "Extracting archive...".to_string());
+            cb(20.0, "Extracting archive...".to_string());
         }
 
         ArchiveExtractor::extract(&archive_path, &install_dir)?;

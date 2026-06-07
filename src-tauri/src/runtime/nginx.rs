@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 
@@ -87,7 +88,7 @@ impl RuntimeProvider for NginxProvider {
     async fn install(
         &self,
         version: &str,
-        on_progress: Option<ProgressCallback>,
+        mut on_progress: Option<ProgressCallback>,
     ) -> Result<RuntimeVersion, AppError> {
         let url = NGINX_VERSIONS
             .iter()
@@ -101,13 +102,36 @@ impl RuntimeProvider for NginxProvider {
         let install_dir = self.version_dir(version);
         std::fs::create_dir_all(&install_dir)?;
 
-        // Download
-        if let Some(ref cb) = on_progress {
-            cb(0.0, "Downloading Nginx source...".to_string());
+        // Download with progress
+        let cb_arc = on_progress.take().map(Arc::new);
+        if let Some(ref cb) = cb_arc {
+            cb(0.0, format!("Downloading Nginx {}...", version));
         }
 
         let archive_path = install_dir.join(format!("nginx-{}.tar.gz", version));
-        DownloadManager::download(url, &archive_path, None).await?;
+
+        let download_cb: Option<crate::download::manager::ProgressCallback> =
+            cb_arc.as_ref().map(|arc| {
+                let arc = arc.clone();
+                let cb: crate::download::manager::ProgressCallback = Box::new(
+                    move |pct: f64, downloaded: u64, total: u64| {
+                        let app_pct = 15.0 * pct / 100.0;
+                        let msg = if total > 0 {
+                            format!("Downloading... {:.0}% ({:.1} / {:.1} MB)", pct, downloaded as f64 / 1_048_576.0, total as f64 / 1_048_576.0)
+                        } else {
+                            format!("Downloading... {:.1} MB", downloaded as f64 / 1_048_576.0)
+                        };
+                        arc(app_pct, msg);
+                    },
+                );
+                cb
+            });
+
+        DownloadManager::download(url, &archive_path, download_cb).await?;
+
+        let on_progress = cb_arc
+            .map(|arc| Arc::try_unwrap(arc).ok())
+            .flatten();
 
         // Extract
         if let Some(ref cb) = on_progress {
@@ -182,20 +206,22 @@ impl RuntimeProvider for NginxProvider {
             )));
         }
 
-        // Generate nginx.conf
+        // Generate nginx.conf and vhosts directory
         if let Some(ref cb) = on_progress {
             cb(90.0, "Generating configuration...".to_string());
         }
 
         let conf_dir = install_dir.join("conf");
+        let vhosts_dir = conf_dir.join("vhosts");
+        std::fs::create_dir_all(&vhosts_dir)?;
+
         let nginx_conf = conf_dir.join("nginx.conf");
-        if !nginx_conf.exists() {
-            std::fs::write(
-                &nginx_conf,
-                include_str!("../../assets/nginx.conf.default")
-                    .replace("{INSTALL_DIR}", &install_dir.display().to_string()),
-            )?;
-        }
+        // Always overwrite with the latest template on fresh install
+        std::fs::write(
+            &nginx_conf,
+            include_str!("../../assets/nginx.conf.default")
+                .replace("{INSTALL_DIR}", &install_dir.display().to_string()),
+        )?;
 
         // Sign binary
         PlatformOps::sign_binary(&install_dir.join("sbin").join("nginx"))?;

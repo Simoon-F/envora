@@ -18,7 +18,11 @@ impl DownloadManager {
         dest: &Path,
         on_progress: Option<ProgressCallback>,
     ) -> Result<PathBuf, AppError> {
-        let client = reqwest::Client::new();
+        // Use a curl-like User-Agent to avoid CDN blocks (MySQL CDN blocks reqwest's default UA)
+        let client = reqwest::Client::builder()
+            .user_agent("curl/8.7.1")
+            .build()
+            .map_err(|e| AppError::Download(e.to_string()))?;
         let response = client.get(url).send().await?;
 
         if !response.status().is_success() {
