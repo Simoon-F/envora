@@ -8,12 +8,38 @@ use crate::core::AppError;
 use crate::download::extractor::ArchiveExtractor;
 use crate::download::manager::DownloadManager;
 
-const PHP_VERSIONS: &[(&str, &str)] = &[
-    ("8.4.1", "https://www.php.net/distributions/php-8.4.1.tar.gz"),
-    ("8.3.14", "https://www.php.net/distributions/php-8.3.14.tar.gz"),
-    ("8.2.26", "https://www.php.net/distributions/php-8.2.26.tar.gz"),
-    ("8.1.31", "https://www.php.net/distributions/php-8.1.31.tar.gz"),
-];
+/// GitHub Releases base URL for pre-compiled PHP packages.
+/// Release tag: php-{version}, file: php-{version}-macos-{arch}.tar.gz
+const PHP_RELEASES_BASE: &str =
+    "https://github.com/Simoon-F/envora/releases/download";
+
+const PHP_VERSIONS: &[&str] = &["8.4.1", "8.3.14", "8.2.26", "8.1.31"];
+
+/// Detect macOS architecture for pre-compiled package selection
+fn macos_arch() -> &'static str {
+    #[cfg(target_arch = "aarch64")]
+    {
+        "arm64"
+    }
+    #[cfg(target_arch = "x86_64")]
+    {
+        "x86_64"
+    }
+    #[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
+    {
+        "x86_64" // fallback
+    }
+}
+
+/// Build the download URL for a pre-compiled PHP package
+fn php_download_url(version: &str) -> String {
+    format!(
+        "{base}/php-{version}/php-{version}-macos-{arch}.tar.gz",
+        base = PHP_RELEASES_BASE,
+        version = version,
+        arch = macos_arch(),
+    )
+}
 
 pub struct PhpProvider {
     runtime_dir: PathBuf,
@@ -72,11 +98,11 @@ impl RuntimeProvider for PhpProvider {
 
         Ok(PHP_VERSIONS
             .iter()
-            .map(|(version, url)| {
+            .map(|version| {
                 let is_installed = installed.iter().any(|v| v.version == *version);
                 VersionInfo {
                     version: version.to_string(),
-                    download_url: Some(url.to_string()),
+                    download_url: Some(php_download_url(version)),
                     size: None,
                     sha256: None,
                     is_installed,
@@ -86,207 +112,95 @@ impl RuntimeProvider for PhpProvider {
             .collect())
     }
 
+    /// Install a PHP version from pre-compiled binary package.
+    ///
+    /// Steps:
+    /// 1. Download pre-compiled tar.gz from GitHub Releases
+    /// 2. Extract directly to the target install directory
+    /// 3. Ad-hoc sign the binaries (macOS Gatekeeper)
+    /// 4. Write default php.ini
+    /// 5. Record version and update default symlink
     async fn install(
         &self,
         version: &str,
         on_progress: Option<ProgressCallback>,
     ) -> Result<RuntimeVersion, AppError> {
-        // Find download URL
-        let url = PHP_VERSIONS
-            .iter()
-            .find(|(v, _)| *v == version)
-            .map(|(_, url)| *url)
-            .ok_or_else(|| AppError::VersionNotFound {
+        // Validate version exists
+        if !PHP_VERSIONS.contains(&version) {
+            return Err(AppError::VersionNotFound {
                 runtime: "php".to_string(),
                 version: version.to_string(),
-            })?;
+            });
+        }
 
-        // Create directories
         let install_dir = self.version_dir(version);
+
+        // Remove existing installation if re-installing
+        if install_dir.exists() {
+            std::fs::remove_dir_all(&install_dir)?;
+        }
         std::fs::create_dir_all(&install_dir)?;
 
-        // Use /tmp for building to avoid spaces in paths (PHP configure bug)
-        let build_base = PathBuf::from("/tmp/envora-build");
-        let build_dir = build_base.join(format!("php-{}", version));
-        let _ = std::fs::remove_dir_all(&build_dir);
-        std::fs::create_dir_all(&build_dir)?;
-
-        // Download
+        // Download pre-compiled package
+        let url = php_download_url(version);
         if let Some(ref cb) = on_progress {
-            cb(0.0, "Downloading PHP source...".to_string());
+            cb(0.0, format!("Downloading PHP {}...", version));
         }
 
-        let archive_path = build_dir.join(format!("php-{}.tar.gz", version));
-        DownloadManager::download(url, &archive_path, None).await?;
+        let download_dir = PathBuf::from("/tmp/envora-download");
+        std::fs::create_dir_all(&download_dir)?;
+        let archive_path = download_dir.join(format!("php-{}-macos-{}.tar.gz", version, macos_arch()));
+        DownloadManager::download(&url, &archive_path, None).await?;
 
-        // Extract
+        // Extract directly to install_dir
         if let Some(ref cb) = on_progress {
-            cb(20.0, "Extracting archive...".to_string());
+            cb(30.0, "Extracting...".to_string());
         }
 
-        ArchiveExtractor::extract(&archive_path, &build_dir)?;
+        // Extract to a temp location first since the tar contains a version directory
+        let extract_temp = download_dir.join(format!("php-extract-{}", version));
+        let _ = std::fs::remove_dir_all(&extract_temp);
+        std::fs::create_dir_all(&extract_temp)?;
+        ArchiveExtractor::extract(&archive_path, &extract_temp)?;
 
-        // Build from source
-        if let Some(ref cb) = on_progress {
-            cb(30.0, "Configuring...".to_string());
-        }
-
-        let source_dir = build_dir
+        // The tar contains `8.4.1/` — move contents to install_dir
+        let inner_dir = extract_temp
             .read_dir()?
             .filter_map(|e| e.ok())
             .find(|e| e.path().is_dir())
             .map(|e| e.path())
-            .unwrap_or(build_dir.clone());
+            .ok_or_else(|| {
+                AppError::Archive("Pre-compiled package has unexpected structure".to_string())
+            })?;
 
-        // Resolve Homebrew prefix dynamically
-        let brew_prefix = if std::path::Path::new("/opt/homebrew/bin/brew").exists() {
-            String::from_utf8_lossy(
-                &std::process::Command::new("/opt/homebrew/bin/brew")
-                    .args(["--prefix"])
-                    .output()
-                    .map(|o| o.stdout)
-                    .unwrap_or_default(),
-            )
-            .trim()
-            .to_string()
-        } else if std::path::Path::new("/usr/local/bin/brew").exists() {
-            String::from_utf8_lossy(
-                &std::process::Command::new("/usr/local/bin/brew")
-                    .args(["--prefix"])
-                    .output()
-                    .map(|o| o.stdout)
-                    .unwrap_or_default(),
-            )
-            .trim()
-            .to_string()
-        } else {
-            "/usr/local".to_string()
-        };
-        let brew_opt = format!("{}/opt", brew_prefix);
-
-        // Collect pkg-config paths from all relevant Homebrew packages
-        let pkg_config_paths = [
-            format!("{}/lib/pkgconfig", brew_prefix),
-            format!("{}/openssl/lib/pkgconfig", brew_opt),
-            format!("{}/openssl@3/lib/pkgconfig", brew_opt),
-            format!("{}/libxml2/lib/pkgconfig", brew_opt),
-            format!("{}/curl/lib/pkgconfig", brew_opt),
-            format!("{}/zlib/lib/pkgconfig", brew_opt),
-            format!("{}/sqlite/lib/pkgconfig", brew_opt),
-            format!("{}/oniguruma/lib/pkgconfig", brew_opt),
-            format!("{}/libiconv/lib/pkgconfig", brew_opt),
-        ]
-        .join(":");
-
-        // Homebrew bison is keg-only, needs to be first in PATH
-        let brew_bison = format!("{}/bison/bin", brew_opt);
-        let path_extra = if std::path::Path::new(&brew_bison).exists() {
-            format!("{}:{}/bin:{}/sbin", brew_bison, brew_prefix, brew_prefix)
-        } else {
-            format!("{}/bin:{}/sbin", brew_prefix, brew_prefix)
-        };
-
-        // Configure - use env -i to avoid PHP configure bug with spaces in paths,
-        // but set TERM=dumb to avoid shtool terminal detection warnings.
-        // Include Homebrew paths for pkg-config to find all dependencies.
-        let configure_output = PlatformOps::shell_command(&format!(
-            "cd \"{}\" && env -i \
-                HOME=/tmp \
-                TMPDIR=/tmp \
-                TERM=dumb \
-                PATH=\"/usr/bin:/bin:/usr/sbin:/sbin:{path_extra}\" \
-                PKG_CONFIG_PATH=\"{pkg_config_paths}\" \
-                CFLAGS=\"-I{brew_prefix}/include\" \
-                CPPFLAGS=\"-I{brew_prefix}/include\" \
-                LDFLAGS=\"-L{brew_prefix}/lib\" \
-                ./configure --prefix=\"{prefix}\" \
-                    --with-openssl \
-                    --with-curl \
-                    --with-zlib \
-                    --with-iconv={brew_prefix} \
-                    --enable-mbstring \
-                    --enable-fpm \
-                    --with-pdo-mysql \
-                    --with-mysqli",
-            source_dir.display(),
-            path_extra = path_extra,
-            pkg_config_paths = pkg_config_paths,
-            brew_prefix = brew_prefix,
-            prefix = install_dir.display(),
-        ))
-        .output()?;
-
-        if !configure_output.status.success() {
-            let stderr = String::from_utf8_lossy(&configure_output.stderr);
-            let stdout_tail = String::from_utf8_lossy(&configure_output.stdout);
-            // Include both stdout (last 2000 chars) and stderr for debugging
-            let stdout_suffix = if stdout_tail.len() > 2000 {
-                &stdout_tail[stdout_tail.len() - 2000..]
-            } else {
-                &stdout_tail
-            };
-            return Err(AppError::Build(format!(
-                "Configure failed:\n--- stderr ---\n{}\n--- stdout tail ---\n{}",
-                stderr,
-                stdout_suffix
-            )));
+        // Move all files from inner_dir to install_dir
+        for entry in std::fs::read_dir(&inner_dir)? {
+            let entry = entry?;
+            let dest = install_dir.join(entry.file_name());
+            std::fs::rename(entry.path(), &dest)?;
         }
 
-        // Make
+        // Clean up
+        let _ = std::fs::remove_dir_all(&extract_temp);
+        let _ = std::fs::remove_file(&archive_path);
+
+        // Sign binaries for macOS Gatekeeper
         if let Some(ref cb) = on_progress {
-            cb(50.0, "Compiling...".to_string());
+            cb(80.0, "Signing binaries...".to_string());
         }
 
-        let num_cpus = PlatformOps::num_cpus();
-        let make_output = PlatformOps::shell_command(&format!(
-            "cd \"{}\" && make -j{}",
-            source_dir.display(),
-            num_cpus
-        ))
-        .output()?;
-
-        if !make_output.status.success() {
-            let stderr = String::from_utf8_lossy(&make_output.stderr);
-            let stdout = String::from_utf8_lossy(&make_output.stdout);
-            let stdout_suffix = if stdout.len() > 2000 {
-                &stdout[stdout.len() - 2000..]
+        for bin_name in &["php", "php-cgi", "php-fpm"] {
+            let bin_path = if *bin_name == "php-fpm" {
+                install_dir.join("sbin").join(bin_name)
             } else {
-                &stdout
+                install_dir.join("bin").join(bin_name)
             };
-            return Err(AppError::Build(format!(
-                "Make failed:\n--- stderr ---\n{}\n--- stdout tail ---\n{}",
-                stderr,
-                stdout_suffix
-            )));
+            if bin_path.exists() {
+                PlatformOps::sign_binary(&bin_path)?;
+            }
         }
 
-        // Make install
-        if let Some(ref cb) = on_progress {
-            cb(80.0, "Installing...".to_string());
-        }
-
-        let install_output = PlatformOps::shell_command(&format!(
-            "cd \"{}\" && make install",
-            source_dir.display()
-        ))
-        .output()?;
-
-        if !install_output.status.success() {
-            let stderr = String::from_utf8_lossy(&install_output.stderr);
-            let stdout = String::from_utf8_lossy(&install_output.stdout);
-            let stdout_suffix = if stdout.len() > 2000 {
-                &stdout[stdout.len() - 2000..]
-            } else {
-                &stdout
-            };
-            return Err(AppError::Build(format!(
-                "Make install failed:\n--- stderr ---\n{}\n--- stdout tail ---\n{}",
-                stderr,
-                stdout_suffix
-            )));
-        }
-
-        // Generate php.ini
+        // Generate php.ini if not already present (should be in the pre-compiled package)
         if let Some(ref cb) = on_progress {
             cb(90.0, "Generating configuration...".to_string());
         }
@@ -299,12 +213,6 @@ impl RuntimeProvider for PhpProvider {
                     .replace("{INSTALL_DIR}", &install_dir.display().to_string()),
             )?;
         }
-
-        // Sign binary on macOS
-        PlatformOps::sign_binary(&install_dir.join("bin").join("php"))?;
-
-        // Clean up build directory
-        let _ = std::fs::remove_dir_all(&build_dir);
 
         if let Some(ref cb) = on_progress {
             cb(100.0, "Installation complete!".to_string());
@@ -320,6 +228,7 @@ impl RuntimeProvider for PhpProvider {
         };
 
         let mut versions = self.load_installed_versions();
+        versions.retain(|v| v.version != version);
         versions.push(runtime_version.clone());
         self.save_installed_versions(&versions)?;
 
