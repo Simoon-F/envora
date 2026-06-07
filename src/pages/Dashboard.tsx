@@ -98,7 +98,7 @@ function ServiceCard({ serviceType, title }: { serviceType: string; title: strin
 }
 
 export function Dashboard() {
-  const { data: services, isLoading } = useAllServices();
+  const { isLoading } = useAllServices();
 
   if (isLoading) {
     return (

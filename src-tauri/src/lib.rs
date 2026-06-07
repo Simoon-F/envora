@@ -40,6 +40,15 @@ pub fn run() {
             commands::service::start_service,
             commands::service::stop_service,
             commands::service::restart_service,
+            // PHP Config
+            commands::php_config::get_php_config,
+            commands::php_config::save_php_config,
+            commands::php_config::list_php_extensions,
+            commands::php_config::toggle_php_extension,
+            commands::php_config::get_php_fpm_config,
+            commands::php_config::save_php_fpm_config,
+            commands::php_config::list_pecl_extensions,
+            commands::php_config::install_pecl_extension,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,19 +11,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Loader2, Download, Trash2, Check } from 'lucide-react';
+import { Loader2, Download, Trash2, Check, Settings2 } from 'lucide-react';
 import { useInstalledVersions, useAvailableVersions, useInstallVersion, useUninstallVersion } from '@/hooks/useRuntimes';
 import type { RuntimeType, VersionInfo } from '@/types/runtime';
 import type { ProgressEvent } from '@/types/runtime';
 import { listen } from '@tauri-apps/api/event';
 
-const runtimes: { type: RuntimeType; name: string; icon: string }[] = [
-  { type: 'php', name: 'PHP', icon: '🐘' },
+const runtimes: { type: RuntimeType; name: string; icon: string; configPath?: string }[] = [
+  { type: 'php', name: 'PHP', icon: '🐘', configPath: '/runtimes/php' },
   { type: 'nginx', name: 'Nginx', icon: '🌐' },
   { type: 'mysql', name: 'MySQL', icon: '🐬' },
 ];
 
-function RuntimeCard({ runtime }: { runtime: { type: RuntimeType; name: string; icon: string } }) {
+function RuntimeCard({ runtime }: { runtime: { type: RuntimeType; name: string; icon: string; configPath?: string } }) {
+  const navigate = useNavigate();
   const { data: installed, isLoading, mutate } = useInstalledVersions(runtime.type);
   const { data: available } = useAvailableVersions(runtime.type);
   const { mutate: installVersion, isLoading: isInstalling } = useInstallVersion();
@@ -72,6 +74,17 @@ function RuntimeCard({ runtime }: { runtime: { type: RuntimeType; name: string; 
           <Badge variant="outline" className="ml-auto">
             {installed?.length ?? 0} installed
           </Badge>
+          {runtime.configPath && (installed?.length ?? 0) > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => navigate(runtime.configPath!)}
+              title="Configure"
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
