@@ -1,208 +1,88 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Loader2, Download, Trash2, Check, Settings2 } from 'lucide-react';
-import { useInstalledVersions, useAvailableVersions, useInstallVersion, useUninstallVersion } from '@/hooks/useRuntimes';
-import type { RuntimeType, VersionInfo } from '@/types/runtime';
-import type { ProgressEvent } from '@/types/runtime';
-import { listen } from '@tauri-apps/api/event';
+import { useInstalledVersions, useDefaultVersion } from '@/hooks/useRuntimes';
+import type { RuntimeType } from '@/types/runtime';
+import { PHPDetail } from '@/components/runtime/PHPDetail';
+import { MySQLDetail } from '@/components/runtime/MySQLDetail';
+import { NginxDetail } from '@/components/runtime/NginxDetail';
 
-const runtimes: { type: RuntimeType; name: string; icon: string; configPath?: string }[] = [
-  { type: 'php', name: 'PHP', icon: '🐘', configPath: '/runtimes/php' },
-  { type: 'nginx', name: 'Nginx', icon: '🌐', configPath: '/runtimes/nginx' },
-  { type: 'mysql', name: 'MySQL', icon: '🐬', configPath: '/runtimes/mysql' },
+const runtimes: { type: RuntimeType; name: string; icon: string }[] = [
+  { type: 'php', name: 'PHP', icon: '🐘' },
+  { type: 'nginx', name: 'Nginx', icon: '🌐' },
+  { type: 'mysql', name: 'MySQL', icon: '🐬' },
 ];
 
-function RuntimeCard({ runtime }: { runtime: { type: RuntimeType; name: string; icon: string; configPath?: string } }) {
-  const navigate = useNavigate();
-  const { data: installed, isLoading, mutate } = useInstalledVersions(runtime.type);
-  const { data: available } = useAvailableVersions(runtime.type);
-  const { mutate: installVersion, isLoading: isInstalling } = useInstallVersion();
-  const { mutate: uninstallVersion } = useUninstallVersion();
-  const [installProgress, setInstallProgress] = useState<number | null>(null);
-  const [installMessage, setInstallMessage] = useState<string>('');
-  const [dialogOpen, setDialogOpen] = useState(false);
+// ── Sidebar Item ───────────────────────────────────────────────────
 
-  const handleInstall = async (version: string) => {
-    // Listen for progress events
-    const unlisten = await listen<ProgressEvent>('envora://progress', (event) => {
-      const payload = event.payload;
-      if (
-        'runtime' in payload.payload &&
-        payload.payload.runtime === runtime.type &&
-        payload.payload.version === version
-      ) {
-        if (payload.type === 'build_progress') {
-          setInstallProgress(payload.payload.percent);
-          setInstallMessage(payload.payload.message);
-        }
-      }
-    });
+function RuntimeItem({ runtime, selected, onSelect }: { runtime: { type: RuntimeType; name: string; icon: string }; selected: boolean; onSelect: () => void }) {
+  const { data: installed } = useInstalledVersions(runtime.type);
+  const count = installed?.length ?? 0;
+  return (
+    <button
+      onClick={onSelect}
+      className={`w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg transition-colors ${selected ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted border border-transparent'}`}
+    >
+      <span className="text-xl">{runtime.icon}</span>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium">{runtime.name}</div>
+        <div className="text-xs text-muted-foreground">{count} installed</div>
+      </div>
+      {count > 0 && <span className={`w-2 h-2 rounded-full ${selected ? 'bg-primary' : 'bg-muted-foreground/30'}`} />}
+    </button>
+  );
+}
 
-    try {
-      await installVersion({ runtime: runtime.type, version });
-      mutate();
-      setDialogOpen(false);
-    } finally {
-      unlisten();
-      setInstallProgress(null);
-      setInstallMessage('');
+// ── Main Page ──────────────────────────────────────────────────────
+
+export function Runtimes() {
+  const [selected, setSelected] = useState<RuntimeType>('php');
+  const { data: installedPhp } = useInstalledVersions('php');
+  const { data: installedNginx } = useInstalledVersions('nginx');
+  const { data: installedMysql } = useInstalledVersions('mysql');
+  const { data: phpVer } = useDefaultVersion('php');
+  const { data: nginxVer } = useDefaultVersion('nginx');
+  const { data: mysqlVer } = useDefaultVersion('mysql');
+
+  const getVersion = (type: RuntimeType): string => {
+    const installed = type === 'php' ? installedPhp : type === 'nginx' ? installedNginx : installedMysql;
+    const def = type === 'php' ? phpVer : type === 'nginx' ? nginxVer : mysqlVer;
+    return def || installed?.[0]?.version || '';
+  };
+
+  const runtimeInfo = runtimes.find(r => r.type === selected)!;
+  const version = getVersion(selected);
+
+  const renderDetail = () => {
+    switch (selected) {
+      case 'php': return <PHPDetail key={version} version={version || 'latest'} />;
+      case 'nginx': return <NginxDetail key={version} version={version || 'latest'} />;
+      case 'mysql': return <MySQLDetail key={version} version={version || 'latest'} />;
     }
   };
 
-  const handleUninstall = async (version: string) => {
-    await uninstallVersion({ runtime: runtime.type, version });
-    mutate();
-  };
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <span className="text-2xl">{runtime.icon}</span>
-          <span>{runtime.name}</span>
-          <Badge variant="outline" className="ml-auto">
-            {installed?.length ?? 0} installed
-          </Badge>
-          {runtime.configPath && (installed?.length ?? 0) > 0 && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => navigate(runtime.configPath!)}
-              title="Configure"
-            >
-              <Settings2 className="h-4 w-4" />
-            </Button>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </div>
-        ) : (
-          <>
-            {/* Installed versions */}
-            {installed && installed.length > 0 ? (
-              <div className="space-y-2">
-                {installed.map((v) => (
-                  <div
-                    key={v.version}
-                    className="flex items-center justify-between p-2 rounded-md border"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm">{v.version}</span>
-                      {v.is_default && (
-                        <Badge variant="default" className="text-xs">
-                          <Check className="h-3 w-3 mr-1" />
-                          Default
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {formatBytes(v.size)}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleUninstall(v.version)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-2">
-                No versions installed
-              </p>
-            )}
-
-            {/* Install progress */}
-            {installProgress !== null && (
-              <div className="space-y-2">
-                <Progress value={installProgress} />
-                <p className="text-xs text-muted-foreground">{installMessage}</p>
-              </div>
-            )}
-
-            {/* Install button */}
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger render={<Button variant="outline" className="w-full" disabled={isInstalling} />}>
-                {isInstalling ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                Install Version
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Install {runtime.name}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-2">
-                  {available?.map((v: VersionInfo) => (
-                    <div
-                      key={v.version}
-                      className="flex items-center justify-between p-3 rounded-md border hover:bg-muted cursor-pointer"
-                      onClick={() => !v.is_installed && handleInstall(v.version)}
-                    >
-                      <div>
-                        <span className="font-mono">{v.version}</span>
-                        {v.is_installed && (
-                          <Badge variant="secondary" className="ml-2 text-xs">
-                            Installed
-                          </Badge>
-                        )}
-                      </div>
-                      {!v.is_installed && (
-                        <Button size="sm" variant="ghost">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-export function Runtimes() {
-  return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Runtimes</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {runtimes.map((runtime) => (
-          <RuntimeCard key={runtime.type} runtime={runtime} />
+    <div className="flex h-full">
+      {/* Sidebar */}
+      <div className="w-56 border-r p-3 space-y-1 flex-shrink-0">
+        <h2 className="text-sm font-semibold px-3 py-2 text-muted-foreground">Runtimes</h2>
+        {runtimes.map(r => (
+          <RuntimeItem
+            key={r.type}
+            runtime={r}
+            selected={selected === r.type}
+            onSelect={() => setSelected(r.type)}
+          />
         ))}
+      </div>
+      {/* Detail Panel */}
+      <div className="flex-1 p-4 overflow-auto">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-2xl">{runtimeInfo.icon}</span>
+          <h1 className="text-xl font-bold">{runtimeInfo.name}</h1>
+          {version && <Badge variant="outline" className="ml-2">v{version}</Badge>}
+        </div>
+        <div className="p-1">{renderDetail()}</div>
       </div>
     </div>
   );
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
