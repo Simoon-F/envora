@@ -1,0 +1,29 @@
+[mysqld]
+port = 3306
+socket = {INSTALL_DIR}/mysql.sock
+basedir = {INSTALL_DIR}
+datadir = {DATA_DIR}
+pid-file = {INSTALL_DIR}/mysql.pid
+log-error = {INSTALL_DIR}/logs/error.log
+
+# InnoDB settings
+innodb_buffer_pool_size = 128M
+innodb_log_file_size = 48M
+innodb_file_per_table = 1
+innodb_flush_log_at_trx_commit = 1
+
+# Connection settings
+max_connections = 151
+max_allowed_packet = 64M
+
+# Character set
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+[mysql]
+default-character-set = utf8mb4
+socket = {INSTALL_DIR}/mysql.sock
+
+[client]
+default-character-set = utf8mb4
+socket = {INSTALL_DIR}/mysql.sock
