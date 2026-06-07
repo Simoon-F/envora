@@ -133,12 +133,34 @@ pub async fn save_nginx_config(
     let settings = state.settings.lock().await;
     let path = nginx_dir(settings.get(), &version).join("conf").join("nginx.conf");
 
+    // Write to a temp file and test syntax first
+    let tmp_path = path.with_extension("nginx.conf.tmp");
+    std::fs::write(&tmp_path, &content)?;
+
+    let nginx_bin = nginx_dir(settings.get(), &version).join("sbin").join("nginx");
+    let output = PlatformOps::shell_command(&format!(
+        "\"{}\" -t -c \"{}\" 2>&1",
+        nginx_bin.display(),
+        tmp_path.display()
+    ))
+    .output()?;
+
+    if !output.status.success() {
+        let error_text = String::from_utf8_lossy(&output.stderr);
+        let _ = std::fs::remove_file(&tmp_path);
+        return Err(AppError::Config(format!(
+            "Nginx config syntax error:\n{}",
+            error_text
+        )));
+    }
+
+    // Syntax OK — backup and save
     let backup = path.with_extension("nginx.conf.bak");
     if path.exists() {
         let _ = std::fs::copy(&path, &backup);
     }
+    std::fs::rename(&tmp_path, &path)?;
 
-    std::fs::write(&path, &content)?;
     Ok(())
 }
 

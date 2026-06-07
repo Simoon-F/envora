@@ -209,6 +209,52 @@ impl SidecarManager {
         }
         self.processes.clear();
     }
+
+    /// Stop all processes matching a type prefix (e.g., "nginx")
+    pub async fn stop_by_type(&mut self, service_type: &str) {
+        let uuids: Vec<String> = self
+            .processes
+            .values()
+            .filter(|p| p.config.id.starts_with(service_type))
+            .map(|p| p.uuid.clone())
+            .collect();
+        for uuid in uuids {
+            let _ = self.stop(&uuid, true).await;
+        }
+    }
+
+    /// Check health of all managed processes and return status changes
+    pub fn health_check_all(&mut self) -> Vec<ProcessInfo> {
+        let mut changed = Vec::new();
+        let uuids: Vec<String> = self.processes.keys().cloned().collect();
+
+        for uuid in &uuids {
+            let was_running = self.processes.get(uuid)
+                .map(|p| p.status == ServiceStatus::Running)
+                .unwrap_or(false);
+
+            let alive = self.processes.get(uuid)
+                .and_then(|p| p.pid)
+                .map(is_process_alive)
+                .unwrap_or(false);
+
+            if was_running && !alive {
+                if let Some(info) = self.processes.get_mut(uuid) {
+                    info.status = ServiceStatus::Stopped;
+                    info.pid = None;
+                    changed.push(info.clone());
+                }
+            }
+        }
+
+        // Remove dead entries (optional: keep them as "stopped")
+        self.processes.retain(|_, info| {
+            info.status == ServiceStatus::Running
+                || info.pid.map(is_process_alive).unwrap_or(false)
+        });
+
+        changed
+    }
 }
 
 /// Check if a process is alive by PID

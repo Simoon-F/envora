@@ -10,7 +10,8 @@ mod state;
 mod build;
 
 use state::AppState;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+use crate::core::ServiceStatus;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -24,6 +25,13 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
+        // ── Window close → hide to tray ──────────────────────────
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let _ = window.hide();
+                api.prevent_close();
+            }
+        })
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             // Settings
@@ -41,6 +49,8 @@ pub fn run() {
             commands::service::start_service,
             commands::service::stop_service,
             commands::service::restart_service,
+            commands::service::start_all_services,
+            commands::service::stop_all_services,
             // PHP Config
             commands::php_config::get_php_config,
             commands::php_config::save_php_config,
@@ -71,13 +81,90 @@ pub fn run() {
             commands::nginx_config::add_hosts_entry,
             commands::nginx_config::remove_hosts_entry,
         ])
+        .setup(|app| {
+            let handle = app.handle().clone();
+
+            // ── System Tray ──────────────────────────────────────
+            use tauri::tray::{TrayIconBuilder, MouseButtonState, TrayIconEvent};
+            use tauri::menu::{MenuBuilder, MenuItemBuilder};
+
+            let show_item = MenuItemBuilder::with_id("show", "Show Envora").build(app)?;
+            let separator = tauri::menu::PredefinedMenuItem::separator(app)?;
+            let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+
+            let menu = MenuBuilder::new(app)
+                .item(&show_item)
+                .item(&separator)
+                .item(&quit_item)
+                .build()?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("Envora")
+                .menu(&menu)
+                .on_menu_event(move |app, event| {
+                    match event.id().as_ref() {
+                        "show" => {
+                            if let Some(w) = app.get_webview_window("main") {
+                                let _ = w.show();
+                                let _ = w.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .on_tray_icon_event(move |tray, event| {
+                    // macOS: left-click tray icon toggles window
+                    if let TrayIconEvent::Click {
+                        button: tauri::tray::MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(w) = app.get_webview_window("main") {
+                            if w.is_visible().unwrap_or(false) {
+                                let _ = w.hide();
+                            } else {
+                                let _ = w.show();
+                                let _ = w.set_focus();
+                            }
+                        }
+                    }
+                })
+                .build(app)?;
+
+            // ── Health check ─────────────────────────────────────
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+
+                    if let Some(state) = handle.try_state::<AppState>() {
+                        let mut sidecar = state.sidecar.lock().await;
+                        let changed = sidecar.health_check_all();
+
+                        for info in changed {
+                            let _ = handle.emit("envora://service-status", serde_json::json!({
+                                "id": info.config.id,
+                                "name": info.config.name,
+                                "status": ServiceStatus::Stopped,
+                                "pid": null,
+                            }));
+                        }
+                    }
+                }
+            });
+
+            Ok(())
+        })
         .build(tauri::generate_context!())
         .expect("error building tauri application")
         .run(|_app, event| {
             if let tauri::RunEvent::Exit = event {
-                // Gracefully stop all managed services
-                let handle = tokio::runtime::Handle::current();
-                let _ = handle.block_on(async {
+                let _ = tauri::async_runtime::block_on(async {
                     if let Some(state) = _app.try_state::<AppState>() {
                         let mut sidecar = state.sidecar.lock().await;
                         sidecar.shutdown_all().await;

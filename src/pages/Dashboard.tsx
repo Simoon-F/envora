@@ -1,34 +1,25 @@
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Play, Square, RotateCw, Loader2 } from 'lucide-react';
-import { useAllServices, useStartService, useStopService, useRestartService } from '@/hooks/useServices';
+import { Play, Square, RotateCw, Loader2, PowerOff, Power } from 'lucide-react';
+import { useAllServices, useStartService, useStopService, useRestartService, useStartAllServices, useStopAllServices } from '@/hooks/useServices';
 import { useDefaultVersion } from '@/hooks/useRuntimes';
 import type { ServiceStatus } from '@/types/service';
+import { listen } from '@tauri-apps/api/event';
 
-// Map service type → runtime name for version lookup
 const runtimeName: Record<string, string> = {
-  nginx: 'nginx',
-  mysql: 'mysql',
-  'php-fpm': 'php',
+  nginx: 'nginx', mysql: 'mysql', 'php-fpm': 'php',
 };
 
 const statusColors: Record<ServiceStatus, string> = {
-  running: 'bg-green-500',
-  stopped: 'bg-red-500',
-  error: 'bg-red-500',
-  starting: 'bg-yellow-500',
-  stopping: 'bg-yellow-500',
-  unknown: 'bg-gray-500',
+  running: 'bg-green-500', stopped: 'bg-red-500', error: 'bg-red-500',
+  starting: 'bg-yellow-500', stopping: 'bg-yellow-500', unknown: 'bg-gray-500',
 };
 
 const statusLabels: Record<ServiceStatus, string> = {
-  running: 'Running',
-  stopped: 'Stopped',
-  error: 'Error',
-  starting: 'Starting...',
-  stopping: 'Stopping...',
-  unknown: 'Unknown',
+  running: 'Running', stopped: 'Stopped', error: 'Error',
+  starting: 'Starting...', stopping: 'Stopping...', unknown: 'Unknown',
 };
 
 function ServiceCard({ serviceType, title }: { serviceType: string; title: string }) {
@@ -43,7 +34,7 @@ function ServiceCard({ serviceType, title }: { serviceType: string; title: strin
 
   const handleStart = async () => {
     if (!defaultVersion) return;
-    await startService({ serviceType: serviceType, version: defaultVersion });
+    await startService({ serviceType, version: defaultVersion });
     mutate();
   };
 
@@ -98,7 +89,38 @@ function ServiceCard({ serviceType, title }: { serviceType: string; title: strin
 }
 
 export function Dashboard() {
-  const { isLoading } = useAllServices();
+  const { isLoading, mutate } = useAllServices();
+  const { mutate: startAll, isLoading: isStartingAll } = useStartAllServices();
+  const { mutate: stopAll, isLoading: isStoppingAll } = useStopAllServices();
+
+  // Listen for health check events from backend
+  useEffect(() => {
+    const setup = async () => {
+      const unlisten = await listen<{ id: string; status: string }>('envora://service-status', () => {
+        mutate();
+      });
+      return unlisten;
+    };
+    let unlisten: (() => void) | undefined;
+    setup().then(fn => { unlisten = fn; });
+    return () => { unlisten?.(); };
+  }, [mutate]);
+
+  // Auto-refresh service list every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => mutate(), 5000);
+    return () => clearInterval(interval);
+  }, [mutate]);
+
+  const handleStartAll = async () => {
+    await startAll({});
+    mutate();
+  };
+
+  const handleStopAll = async () => {
+    await stopAll({});
+    mutate();
+  };
 
   if (isLoading) {
     return (
@@ -113,13 +135,11 @@ export function Dashboard() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Play className="h-4 w-4 mr-2" />
-            Start All
+          <Button variant="outline" size="sm" onClick={handleStartAll} disabled={isStartingAll}>
+            <Power className="h-4 w-4 mr-2" />Start All
           </Button>
-          <Button variant="outline" size="sm">
-            <Square className="h-4 w-4 mr-2" />
-            Stop All
+          <Button variant="outline" size="sm" onClick={handleStopAll} disabled={isStoppingAll}>
+            <PowerOff className="h-4 w-4 mr-2" />Stop All
           </Button>
         </div>
       </div>

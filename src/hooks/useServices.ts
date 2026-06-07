@@ -27,3 +27,15 @@ export function useRestartService() {
     'restart_service'
   );
 }
+
+export function useStartAllServices() {
+  return useTauriMutation<ServiceInfo[], Record<string, never>>(
+    'start_all_services'
+  );
+}
+
+export function useStopAllServices() {
+  return useTauriMutation<void, Record<string, never>>(
+    'stop_all_services'
+  );
+}
