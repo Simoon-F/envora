@@ -19,8 +19,8 @@ import { listen } from '@tauri-apps/api/event';
 
 const runtimes: { type: RuntimeType; name: string; icon: string; configPath?: string }[] = [
   { type: 'php', name: 'PHP', icon: '🐘', configPath: '/runtimes/php' },
-  { type: 'nginx', name: 'Nginx', icon: '🌐' },
-  { type: 'mysql', name: 'MySQL', icon: '🐬' },
+  { type: 'nginx', name: 'Nginx', icon: '🌐', configPath: '/runtimes/nginx' },
+  { type: 'mysql', name: 'MySQL', icon: '🐬', configPath: '/runtimes/mysql' },
 ];
 
 function RuntimeCard({ runtime }: { runtime: { type: RuntimeType; name: string; icon: string; configPath?: string } }) {

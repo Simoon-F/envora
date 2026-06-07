@@ -174,6 +174,10 @@ impl RuntimeProvider for MysqlProvider {
             let _ = std::fs::remove_dir_all(inner);
         }
 
+        // Create required directories
+        let logs_dir = install_dir.join("logs");
+        std::fs::create_dir_all(&logs_dir)?;
+
         // Initialize data directory
         if let Some(ref cb) = on_progress {
             cb(60.0, "Initializing database...".to_string());

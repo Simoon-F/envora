@@ -73,6 +73,8 @@ pub async fn start_service(
         "mysql" => {
             let binary = runtime_dir.join("mysql").join(&version).join("bin").join("mysqld");
             let my_cnf = runtime_dir.join("mysql").join(&version).join("my.cnf");
+            // Ensure logs dir exists (MySQL refuses to start without it)
+            let _ = std::fs::create_dir_all(runtime_dir.join("mysql").join(&version).join("logs"));
             (
                 SidecarConfig {
                     id: format!("mysql-{}", version),

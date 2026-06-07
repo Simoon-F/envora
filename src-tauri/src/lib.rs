@@ -49,6 +49,26 @@ pub fn run() {
             commands::php_config::save_php_fpm_config,
             commands::php_config::list_pecl_extensions,
             commands::php_config::install_pecl_extension,
+            // MySQL Config
+            commands::mysql_config::get_mysql_config,
+            commands::mysql_config::save_mysql_config,
+            commands::mysql_config::list_mysql_users,
+            commands::mysql_config::create_mysql_user,
+            commands::mysql_config::drop_mysql_user,
+            commands::mysql_config::change_mysql_password,
+            commands::mysql_config::list_mysql_databases,
+            commands::mysql_config::create_mysql_database,
+            commands::mysql_config::drop_mysql_database,
+            // Nginx Config
+            commands::nginx_config::get_nginx_config,
+            commands::nginx_config::save_nginx_config,
+            commands::nginx_config::reload_nginx,
+            commands::nginx_config::list_vhosts,
+            commands::nginx_config::create_vhost,
+            commands::nginx_config::delete_vhost,
+            commands::nginx_config::get_hosts_content,
+            commands::nginx_config::add_hosts_entry,
+            commands::nginx_config::remove_hosts_entry,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
