@@ -80,6 +80,13 @@ pub fn run() {
             commands::nginx_config::get_hosts_content,
             commands::nginx_config::add_hosts_entry,
             commands::nginx_config::remove_hosts_entry,
+            // Composer
+            commands::composer::get_composer_info,
+            commands::composer::install_composer,
+            commands::composer::update_composer,
+            commands::composer::get_composer_config,
+            commands::composer::set_composer_config,
+            commands::composer::run_composer_command,
         ])
         .setup(|app| {
             let handle = app.handle().clone();

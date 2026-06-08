@@ -4,3 +4,4 @@ pub mod service;
 pub mod php_config;
 pub mod mysql_config;
 pub mod nginx_config;
+pub mod composer;

@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Package, Settings, Zap } from 'lucide-react';
+import { LayoutDashboard, Package, PackageCheck, Settings, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/runtimes', icon: Package, label: 'Runtimes' },
+  { to: '/composer', icon: PackageCheck, label: 'Composer' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 

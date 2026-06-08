@@ -5,6 +5,7 @@ import { Runtimes } from '@/pages/Runtimes';
 import { PhpRuntime } from '@/pages/PhpRuntime';
 import { MysqlRuntime } from '@/pages/MysqlRuntime';
 import { NginxRuntime } from '@/pages/NginxRuntime';
+import { Composer } from '@/pages/Composer';
 import { Settings } from '@/pages/Settings';
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
           <Route path="/runtimes/php" element={<PhpRuntime />} />
           <Route path="/runtimes/mysql" element={<MysqlRuntime />} />
           <Route path="/runtimes/nginx" element={<NginxRuntime />} />
+          <Route path="/composer" element={<Composer />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
