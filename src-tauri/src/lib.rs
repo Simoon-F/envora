@@ -37,6 +37,8 @@ pub fn run() {
             // Settings
             commands::settings::get_settings,
             commands::settings::update_settings,
+            commands::settings::get_shell_environment_status,
+            commands::settings::install_shell_environment,
             // Runtime
             commands::runtime::list_installed_versions,
             commands::runtime::list_available_versions,

@@ -58,7 +58,12 @@ pub async fn install_version(
         );
     });
 
-    provider.install(version.as_str(), Some(on_progress)).await
+    let installed = provider
+        .install(version.as_str(), Some(on_progress))
+        .await?;
+    crate::commands::settings::ensure_shell_environment(&state)?;
+
+    Ok(installed)
 }
 
 #[tauri::command]

@@ -9,3 +9,10 @@ export interface AppSettings {
   auto_start_services: boolean;
   theme: Theme;
 }
+
+export interface ShellEnvironmentStatus {
+  bin_dir: string;
+  env_script: string;
+  shell_profile: string;
+  is_installed: boolean;
+}

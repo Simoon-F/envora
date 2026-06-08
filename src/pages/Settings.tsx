@@ -1,11 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useThemeStore } from '@/stores/theme';
 import { useTauriSwr } from '@/hooks/useSwr';
 import { useTauriMutation } from '@/hooks/useMutation';
-import type { AppSettings, Theme } from '@/types/settings';
-import { Moon, Sun, Monitor } from 'lucide-react';
+import type { AppSettings, ShellEnvironmentStatus, Theme } from '@/types/settings';
+import { Moon, Sun, Monitor, Terminal, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
@@ -17,11 +18,19 @@ const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
 export function Settings() {
   const { theme, setTheme } = useThemeStore();
   const { data: settings, isLoading } = useTauriSwr<AppSettings>('get_settings');
+  const { data: shellEnv, mutate: refreshShellEnv } = useTauriSwr<ShellEnvironmentStatus>('get_shell_environment_status');
   const { mutate: updateSettings } = useTauriMutation('update_settings');
+  const { mutate: installShellEnv, isLoading: isInstallingShellEnv } =
+    useTauriMutation<ShellEnvironmentStatus>('install_shell_environment');
 
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
     updateSettings({ theme: newTheme });
+  };
+
+  const handleInstallShellEnv = async () => {
+    await installShellEnv({});
+    refreshShellEnv();
   };
 
   return (
@@ -81,6 +90,48 @@ export function Settings() {
               </div>
             </div>
           ) : null}
+        </CardContent>
+      </Card>
+
+      {/* Shell Environment */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Terminal className="h-4 w-4" />
+            Shell 环境
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Badge variant={shellEnv?.is_installed ? 'default' : 'secondary'}>
+                {shellEnv?.is_installed ? '已写入' : '未写入'}
+              </Badge>
+              <span className="text-xs text-muted-foreground">新开终端后生效</span>
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">命令目录</Label>
+              <p className="text-sm font-mono mt-1 break-all">{shellEnv?.bin_dir ?? settings?.bin_dir ?? '-'}</p>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">环境脚本</Label>
+              <p className="text-sm font-mono mt-1 break-all">{shellEnv?.env_script ?? '-'}</p>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Shell 配置文件</Label>
+              <p className="text-sm font-mono mt-1 break-all">{shellEnv?.shell_profile ?? '-'}</p>
+            </div>
+
+            <Button size="sm" onClick={handleInstallShellEnv} disabled={isInstallingShellEnv}>
+              {isInstallingShellEnv ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              {shellEnv?.is_installed ? '重新写入 Shell 环境' : '写入 Shell 环境'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

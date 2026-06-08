@@ -57,6 +57,59 @@ fn composer_cache_path(state: &AppState) -> PathBuf {
     composer_home_path(state).join("cache")
 }
 
+fn composer_launcher_path(state: &AppState) -> PathBuf {
+    state.bin_dir().join(if cfg!(windows) {
+        "composer.bat"
+    } else {
+        "composer"
+    })
+}
+
+pub(crate) fn write_composer_launcher(state: &AppState) -> Result<(), AppError> {
+    let launcher = composer_launcher_path(state);
+    if let Some(parent) = launcher.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    #[cfg(windows)]
+    {
+        let content = format!(
+            "@echo off\r\n\
+             set DIR=%~dp0\r\n\
+             if exist \"%DIR%php.exe\" (\r\n\
+             \x20 \"%DIR%php.exe\" \"%DIR%composer.phar\" %*\r\n\
+             ) else (\r\n\
+             \x20 php \"%DIR%composer.phar\" %*\r\n\
+             )\r\n"
+        );
+        std::fs::write(&launcher, content)?;
+    }
+
+    #[cfg(not(windows))]
+    {
+        let content = "#!/bin/sh\n\
+            set -e\n\
+            DIR=$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)\n\
+            PHP_BIN=\"$DIR/php\"\n\
+            if [ ! -x \"$PHP_BIN\" ]; then\n\
+            \x20 PHP_BIN=$(command -v php || true)\n\
+            fi\n\
+            if [ -z \"$PHP_BIN\" ]; then\n\
+            \x20 echo \"PHP is required to run Composer. Install PHP in Envora first.\" >&2\n\
+            \x20 exit 127\n\
+            fi\n\
+            exec \"$PHP_BIN\" \"$DIR/composer.phar\" \"$@\"\n";
+        std::fs::write(&launcher, content)?;
+
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(&launcher)?.permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&launcher, permissions)?;
+    }
+
+    Ok(())
+}
+
 fn php_binary(
     settings: &crate::settings::manager::AppSettings,
     version: Option<&str>,
@@ -291,6 +344,9 @@ pub async fn install_composer(
         permissions.set_mode(0o755);
         std::fs::set_permissions(&target, permissions)?;
     }
+
+    write_composer_launcher(&state)?;
+    crate::commands::settings::ensure_shell_environment(&state)?;
 
     emit_progress(
         &app,
