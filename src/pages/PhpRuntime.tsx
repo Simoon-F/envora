@@ -36,7 +36,7 @@ function PhpIniEditor({ version }: { version: string }) {
       setContent(text);
       setOriginal(text);
     } catch (e) {
-      setContent(`; Failed to load php.ini\n; ${String(e)}`);
+      setContent(`; 加载 php.ini 失败\n; ${String(e)}`);
     } finally {
       setLoading(false);
     }
@@ -49,10 +49,10 @@ function PhpIniEditor({ version }: { version: string }) {
     try {
       await tauriInvoke('save_php_config', { version, content });
       setOriginal(content);
-      setMessage('Saved!');
+      setMessage('已保存！');
       setTimeout(() => setMessage(''), 2000);
     } catch (e) {
-      setMessage(`Save failed: ${String(e)}`);
+      setMessage(`保存失败：${String(e)}`);
     } finally {
       setSaving(false);
     }
@@ -69,11 +69,11 @@ function PhpIniEditor({ version }: { version: string }) {
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
           {message && <span className="text-green-500">{message}</span>}
-          {isModified && !message && <span className="text-yellow-500">Unsaved changes</span>}
+          {isModified && !message && <span className="text-yellow-500">有未保存的更改</span>}
         </span>
         <Button size="sm" onClick={handleSave} disabled={saving || !isModified}>
           <Save className="h-3 w-3 mr-1" />
-          {saving ? 'Saving...' : 'Save'}
+          {saving ? '保存中...' : '保存'}
         </Button>
       </div>
       <textarea
@@ -145,7 +145,7 @@ function ExtensionManager({ version }: { version: string }) {
     <div className="space-y-4">
       {/* Loadable extensions */}
       <div>
-        <h4 className="text-sm font-medium mb-2">Loadable Extensions</h4>
+        <h4 className="text-sm font-medium mb-2">可加载扩展</h4>
         <div className="grid grid-cols-2 gap-1">
           {loadable.map((ext) => (
             <div key={ext.filename} className="flex items-center justify-between p-2 rounded-md border text-sm">
@@ -162,14 +162,14 @@ function ExtensionManager({ version }: { version: string }) {
             </div>
           ))}
           {loadable.length === 0 && (
-            <p className="text-sm text-muted-foreground col-span-2">No loadable extensions found.</p>
+            <p className="text-sm text-muted-foreground col-span-2">未找到可加载扩展。</p>
           )}
         </div>
       </div>
 
       {/* Built-in extensions (read-only) */}
       <div>
-        <h4 className="text-sm font-medium mb-2">Built-in Extensions</h4>
+        <h4 className="text-sm font-medium mb-2">内置扩展</h4>
         <div className="grid grid-cols-3 gap-1">
           {builtinsList.map((ext) => (
             <div key={ext.name} className="flex items-center gap-1 text-xs text-muted-foreground p-1">
@@ -243,14 +243,14 @@ function VersionsTab() {
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm">{v.version}</span>
                 {v.version === defaultVersion && (
-                  <Badge><Check className="h-3 w-3 mr-1" />Default</Badge>
+                  <Badge><Check className="h-3 w-3 mr-1" />默认</Badge>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{formatBytes(v.size)}</span>
                 {v.version !== defaultVersion && (
                   <Button variant="ghost" size="sm" onClick={async () => { await switchDefault({ runtime: 'php', version: v.version }); mutate(); }}>
-                    Set Default
+                    设为默认
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" onClick={() => handleUninstall(v.version)}>
@@ -261,7 +261,7 @@ function VersionsTab() {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">No versions installed.</p>
+        <p className="text-sm text-muted-foreground">尚未安装任何版本。</p>
       )}
 
       {/* Install progress */}
@@ -281,7 +281,7 @@ function VersionsTab() {
 
       {/* Available versions */}
       <div>
-        <h4 className="text-sm font-medium mb-2">Available Versions</h4>
+        <h4 className="text-sm font-medium mb-2">可安装版本</h4>
         {available?.filter((v: VersionInfo) => !v.is_installed).map((v: VersionInfo) => (
           <div
             key={v.version}
@@ -334,7 +334,7 @@ function PeclInstaller({ version }: { version: string }) {
       await tauriInvoke('install_pecl_extension', { version, extensionName: name });
       await load();
     } catch (e) {
-      setError(`Failed to install ${name}: ${String(e)}`);
+      setError(`安装 ${name} 失败：${String(e)}`);
     } finally {
       setInstalling(null);
     }
@@ -353,8 +353,8 @@ function PeclInstaller({ version }: { version: string }) {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Popular PECL extensions. Installation requires <code>phpize</code> and <code>php-config</code> (included in the PHP package).
-        Some extensions may require additional system libraries.
+        常用 PECL 扩展。安装需要 <code>phpize</code> 和 <code>php-config</code>（已包含在 PHP 包中）。
+        部分扩展可能还需要额外的系统库。
       </p>
 
       <div className="grid grid-cols-2 gap-2">
@@ -365,7 +365,7 @@ function PeclInstaller({ version }: { version: string }) {
                 <span className="font-mono text-sm">{ext.name}</span>
                 {ext.installed && (
                   <span className="flex items-center gap-1 text-xs text-green-600">
-                    <Circle className="h-2 w-2 fill-green-600" /> Installed
+                    <Circle className="h-2 w-2 fill-green-600" /> 已安装
                   </span>
                 )}
               </div>
@@ -382,7 +382,7 @@ function PeclInstaller({ version }: { version: string }) {
               ) : (
                 <PackagePlus className="h-3 w-3 mr-1" />
               )}
-              {ext.installed ? 'Installed' : 'Install'}
+              {ext.installed ? '已安装' : '安装'}
             </Button>
           </div>
         ))}
@@ -405,16 +405,16 @@ export function PhpRuntime() {
       <div className="flex items-center gap-3">
         <span className="text-2xl">🐘</span>
         <h1 className="text-2xl font-bold">PHP</h1>
-        {defaultVer && <Badge variant="outline">Default: {defaultVer}</Badge>}
+        {defaultVer && <Badge variant="outline">默认：{defaultVer}</Badge>}
       </div>
 
       {/* Version selector */}
       {defaultVer && (
         <div className="text-sm text-muted-foreground">
-          Editing configuration for <span className="font-mono">PHP {defaultVer}</span>
+          正在编辑 <span className="font-mono">PHP {defaultVer}</span> 的配置
           {installed && installed.length > 1 && (
             <span className="ml-2 text-xs">
-              ({installed.length} versions installed — editing default, switch default to edit others)
+              （已安装 {installed.length} 个版本，当前编辑默认版本；切换默认版本可编辑其他版本）
             </span>
           )}
         </div>
@@ -422,15 +422,15 @@ export function PhpRuntime() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="versions">Versions</TabsTrigger>
+          <TabsTrigger value="versions">版本</TabsTrigger>
           <TabsTrigger value="ini" disabled={!defaultVer}>php.ini</TabsTrigger>
-          <TabsTrigger value="extensions" disabled={!defaultVer}>Extensions</TabsTrigger>
+          <TabsTrigger value="extensions" disabled={!defaultVer}>扩展</TabsTrigger>
           <TabsTrigger value="pecl" disabled={!defaultVer}>PECL</TabsTrigger>
         </TabsList>
 
         <TabsContent value="versions" className="mt-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Installed Versions</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">已安装版本</CardTitle></CardHeader>
             <CardContent><VersionsTab /></CardContent>
           </Card>
         </TabsContent>
@@ -449,7 +449,7 @@ export function PhpRuntime() {
               {defaultVer ? (
                 <PhpIniEditor key={defaultVer} version={defaultVer} />
               ) : (
-                <p className="text-sm text-muted-foreground">Install a PHP version first.</p>
+                <p className="text-sm text-muted-foreground">请先安装 PHP 版本。</p>
               )}
             </CardContent>
           </Card>
@@ -457,12 +457,12 @@ export function PhpRuntime() {
 
         <TabsContent value="extensions" className="mt-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Extensions</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">扩展</CardTitle></CardHeader>
             <CardContent>
               {defaultVer ? (
                 <ExtensionManager key={defaultVer} version={defaultVer} />
               ) : (
-                <p className="text-sm text-muted-foreground">Install a PHP version first.</p>
+                <p className="text-sm text-muted-foreground">请先安装 PHP 版本。</p>
               )}
             </CardContent>
           </Card>
@@ -470,12 +470,12 @@ export function PhpRuntime() {
 
         <TabsContent value="pecl" className="mt-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Install PECL Extensions</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">安装 PECL 扩展</CardTitle></CardHeader>
             <CardContent>
               {defaultVer ? (
                 <PeclInstaller key={defaultVer} version={defaultVer} />
               ) : (
-                <p className="text-sm text-muted-foreground">Install a PHP version first.</p>
+                <p className="text-sm text-muted-foreground">请先安装 PHP 版本。</p>
               )}
             </CardContent>
           </Card>

@@ -18,8 +18,8 @@ const statusColors: Record<ServiceStatus, string> = {
 };
 
 const statusLabels: Record<ServiceStatus, string> = {
-  running: 'Running', stopped: 'Stopped', error: 'Error',
-  starting: 'Starting...', stopping: 'Stopping...', unknown: 'Unknown',
+  running: '运行中', stopped: '已停止', error: '错误',
+  starting: '启动中...', stopping: '停止中...', unknown: '未知',
 };
 
 function ServiceCard({ serviceType, title }: { serviceType: string; title: string }) {
@@ -63,22 +63,22 @@ function ServiceCard({ serviceType, title }: { serviceType: string; title: strin
         <div className="space-y-3">
           <div className="text-sm text-muted-foreground">
             {defaultVersion && <span className="mr-3">v{defaultVersion}</span>}
-            {service?.pid ? `PID: ${service.pid}` : 'Not running'}
-            {service?.port ? ` • Port: ${service.port}` : ''}
+            {service?.pid ? `PID: ${service.pid}` : '未运行'}
+            {service?.port ? ` • 端口: ${service.port}` : ''}
           </div>
           <div className="flex gap-2">
             {status === 'running' ? (
               <>
                 <Button variant="outline" size="sm" onClick={handleStop} disabled={isStopping}>
-                  <Square className="h-3 w-3 mr-1" />Stop
+                  <Square className="h-3 w-3 mr-1" />停止
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleRestart} disabled={isRestarting}>
-                  <RotateCw className="h-3 w-3 mr-1" />Restart
+                  <RotateCw className="h-3 w-3 mr-1" />重启
                 </Button>
               </>
             ) : (
               <Button size="sm" onClick={handleStart} disabled={isStarting || !defaultVersion}>
-                <Play className="h-3 w-3 mr-1" />Start
+                <Play className="h-3 w-3 mr-1" />启动
               </Button>
             )}
           </div>
@@ -133,13 +133,13 @@ export function Dashboard() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-bold">仪表盘</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleStartAll} disabled={isStartingAll}>
-            <Power className="h-4 w-4 mr-2" />Start All
+            <Power className="h-4 w-4 mr-2" />全部启动
           </Button>
           <Button variant="outline" size="sm" onClick={handleStopAll} disabled={isStoppingAll}>
-            <PowerOff className="h-4 w-4 mr-2" />Stop All
+            <PowerOff className="h-4 w-4 mr-2" />全部停止
           </Button>
         </div>
       </div>

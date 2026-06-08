@@ -9,9 +9,9 @@ import { Moon, Sun, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor },
+  { value: 'light', label: '浅色', icon: Sun },
+  { value: 'dark', label: '深色', icon: Moon },
+  { value: 'system', label: '跟随系统', icon: Monitor },
 ];
 
 export function Settings() {
@@ -26,16 +26,16 @@ export function Settings() {
 
   return (
     <div className="p-6 space-y-6 max-w-2xl">
-      <h1 className="text-2xl font-bold">Settings</h1>
+      <h1 className="text-2xl font-bold">设置</h1>
 
       {/* Theme */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Appearance</CardTitle>
+          <CardTitle className="text-base">外观</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <Label>Theme</Label>
+            <Label>主题</Label>
             <div className="flex gap-2">
               {themeOptions.map(({ value, label, icon: Icon }) => (
                 <Button
@@ -60,23 +60,23 @@ export function Settings() {
       {/* Paths */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Paths</CardTitle>
+          <CardTitle className="text-base">路径</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <p className="text-sm text-muted-foreground">加载中...</p>
           ) : settings ? (
             <div className="space-y-3">
               <div>
-                <Label className="text-xs text-muted-foreground">Data Directory</Label>
+                <Label className="text-xs text-muted-foreground">数据目录</Label>
                 <p className="text-sm font-mono mt-1">{settings.data_dir}</p>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Runtime Directory</Label>
+                <Label className="text-xs text-muted-foreground">运行环境目录</Label>
                 <p className="text-sm font-mono mt-1">{settings.runtime_dir}</p>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Binary Directory</Label>
+                <Label className="text-xs text-muted-foreground">可执行文件目录</Label>
                 <p className="text-sm font-mono mt-1">{settings.bin_dir}</p>
               </div>
             </div>
@@ -87,12 +87,12 @@ export function Settings() {
       {/* About */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">About</CardTitle>
+          <CardTitle className="text-base">关于</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>Envora v0.1.0</p>
-            <p>A unified development environment management platform.</p>
+            <p>统一的开发环境管理平台。</p>
           </div>
         </CardContent>
       </Card>

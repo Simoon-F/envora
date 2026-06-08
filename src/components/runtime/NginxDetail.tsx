@@ -28,24 +28,24 @@ function NginxConfEditor({ version }: { version: string }) {
   useEffect(() => { load(); }, [load]);
   const save = async () => {
     if (!content) return; setSaving(true); setMsg('');
-    try { await tauriInvoke('save_nginx_config', { version, content }); setOriginal(content); setMsg('Saved!'); setTimeout(() => setMsg(''), 2000); }
-    catch (e) { setMsg(`Error: ${String(e)}`); }
+    try { await tauriInvoke('save_nginx_config', { version, content }); setOriginal(content); setMsg('已保存！'); setTimeout(() => setMsg(''), 2000); }
+    catch (e) { setMsg(`错误：${String(e)}`); }
     finally { setSaving(false); }
   };
   const reload = async () => {
     setReloading(true);
-    try { await tauriInvoke('reload_nginx', { version }); setMsg('Reloaded!'); setTimeout(() => setMsg(''), 2000); }
-    catch (e) { setMsg(`Reload failed: ${String(e)}`); }
+    try { await tauriInvoke('reload_nginx', { version }); setMsg('已重载！'); setTimeout(() => setMsg(''), 2000); }
+    catch (e) { setMsg(`重载失败：${String(e)}`); }
     finally { setReloading(false); }
   };
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm">{msg && <span className={msg.startsWith('Error') || msg.startsWith('Reload failed') ? 'text-red-500' : 'text-green-500'}>{msg}</span>}{content !== original && !msg && <span className="text-yellow-500">Unsaved</span>}</span>
+        <span className="text-sm">{msg && <span className={msg.startsWith('错误') || msg.startsWith('重载失败') ? 'text-red-500' : 'text-green-500'}>{msg}</span>}{content !== original && !msg && <span className="text-yellow-500">未保存</span>}</span>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={reload} disabled={reloading}><RefreshCw className="h-3 w-3 mr-1" />Reload</Button>
-          <Button size="sm" onClick={save} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />Save</Button>
+          <Button variant="outline" size="sm" onClick={reload} disabled={reloading}><RefreshCw className="h-3 w-3 mr-1" />重载</Button>
+          <Button size="sm" onClick={save} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />保存</Button>
         </div>
       </div>
       <textarea className="w-full h-72 font-mono text-xs bg-muted p-3 rounded-md border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
@@ -78,17 +78,17 @@ function VHostManager({ version }: { version: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{vhosts.length} sites</span>
-        <Button variant="outline" size="sm" onClick={() => setShowForm(!showForm)}><Plus className="h-3 w-3 mr-1" />Add Site</Button>
+        <span className="text-sm text-muted-foreground">{vhosts.length} 个站点</span>
+        <Button variant="outline" size="sm" onClick={() => setShowForm(!showForm)}><Plus className="h-3 w-3 mr-1" />添加站点</Button>
       </div>
       {showForm && (
         <div className="grid grid-cols-2 gap-2 p-3 border rounded-md">
-          <div><Label className="text-xs">Domain</Label><Input placeholder="myapp.test" value={form.domain} onChange={e => setForm({ ...form, domain: e.target.value })} /></div>
-          <div><Label className="text-xs">Port</Label><Input type="number" value={form.port} onChange={e => setForm({ ...form, port: parseInt(e.target.value) || 80 })} /></div>
-          <div className="col-span-2"><Label className="text-xs">Project Root</Label><Input placeholder="/Users/xxx/Projects/myapp/public" value={form.root_dir} onChange={e => setForm({ ...form, root_dir: e.target.value })} /></div>
+          <div><Label className="text-xs">域名</Label><Input placeholder="myapp.test" value={form.domain} onChange={e => setForm({ ...form, domain: e.target.value })} /></div>
+          <div><Label className="text-xs">端口</Label><Input type="number" value={form.port} onChange={e => setForm({ ...form, port: parseInt(e.target.value) || 80 })} /></div>
+          <div className="col-span-2"><Label className="text-xs">项目根目录</Label><Input placeholder="/Users/xxx/Projects/myapp/public" value={form.root_dir} onChange={e => setForm({ ...form, root_dir: e.target.value })} /></div>
           <div className="col-span-2 flex gap-2">
-            <Button size="sm" onClick={create} disabled={!form.domain}><Plus className="h-3 w-3 mr-1" />Create</Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button size="sm" onClick={create} disabled={!form.domain}><Plus className="h-3 w-3 mr-1" />创建</Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>取消</Button>
           </div>
         </div>
       )}
@@ -104,19 +104,19 @@ function VHostManager({ version }: { version: string }) {
               <Button variant="ghost" size="sm" className="h-7" onClick={() => remove(v.id)}><Trash2 className="h-3 w-3 text-red-500" /></Button>
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
-              <div>Root: <code>{v.root_dir}</code></div>
+              <div>根目录：<code>{v.root_dir}</code></div>
               <div>PHP: {v.php_version}</div>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => v.hosts_managed ? removeHosts(v.domain) : addHosts(v.domain)}>
-                {v.hosts_managed ? 'Remove from /etc/hosts' : 'Add to /etc/hosts'}
+                {v.hosts_managed ? '从 /etc/hosts 移除' : '添加到 /etc/hosts'}
               </Button>
             </div>
           </div>
         ))}
-        {vhosts.length === 0 && <p className="text-sm text-muted-foreground py-4">No sites configured.</p>}
+        {vhosts.length === 0 && <p className="text-sm text-muted-foreground py-4">尚未配置站点。</p>}
       </div>
-      <Card><CardHeader className="py-2"><CardTitle className="text-xs font-medium flex items-center gap-1"><FileText className="h-3 w-3" /> /etc/hosts</CardTitle></CardHeader><CardContent className="p-2"><pre className="text-xs font-mono max-h-32 overflow-auto whitespace-pre-wrap bg-muted p-2 rounded">{hostsContent || 'Loading...'}</pre></CardContent></Card>
+      <Card><CardHeader className="py-2"><CardTitle className="text-xs font-medium flex items-center gap-1"><FileText className="h-3 w-3" /> /etc/hosts</CardTitle></CardHeader><CardContent className="p-2"><pre className="text-xs font-mono max-h-32 overflow-auto whitespace-pre-wrap bg-muted p-2 rounded">{hostsContent || '加载中...'}</pre></CardContent></Card>
     </div>
   );
 }
@@ -131,7 +131,7 @@ function VersionsTab() {
           <span className="font-mono text-sm">{v.version}</span>
           <span className="text-xs text-muted-foreground">{v.size ? `${(v.size / 1_048_576).toFixed(0)} MB` : ''}</span>
         </div>
-      )) : <p className="text-sm text-muted-foreground">No versions installed.</p>}
+      )) : <p className="text-sm text-muted-foreground">尚未安装任何版本。</p>}
     </div>
   );
 }
@@ -141,13 +141,13 @@ export function NginxDetail({ version }: { version: string }) {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
-        <TabsTrigger value="versions">Versions</TabsTrigger>
+        <TabsTrigger value="versions">版本</TabsTrigger>
         <TabsTrigger value="config">nginx.conf</TabsTrigger>
-        <TabsTrigger value="vhosts">Virtual Hosts</TabsTrigger>
+        <TabsTrigger value="vhosts">Hosts</TabsTrigger>
       </TabsList>
-      <TabsContent value="versions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">Versions</CardTitle></CardHeader><CardContent><VersionsTab /></CardContent></Card></TabsContent>
+      <TabsContent value="versions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">版本</CardTitle></CardHeader><CardContent><VersionsTab /></CardContent></Card></TabsContent>
       <TabsContent value="config" className="mt-4"><Card><CardHeader><CardTitle className="text-base">nginx.conf</CardTitle></CardHeader><CardContent><NginxConfEditor key={version} version={version} /></CardContent></Card></TabsContent>
-      <TabsContent value="vhosts" className="mt-4"><Card><CardHeader><CardTitle className="text-base">Virtual Hosts</CardTitle></CardHeader><CardContent><VHostManager key={version} version={version} /></CardContent></Card></TabsContent>
+      <TabsContent value="vhosts" className="mt-4"><Card><CardHeader><CardTitle className="text-base">Hosts</CardTitle></CardHeader><CardContent><VHostManager key={version} version={version} /></CardContent></Card></TabsContent>
     </Tabs>
   );
 }

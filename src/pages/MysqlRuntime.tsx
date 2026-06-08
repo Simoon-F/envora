@@ -26,7 +26,7 @@ function MyCnfEditor({ version }: { version: string }) {
     try {
       const t = await tauriInvoke<string>('get_mysql_config', { version });
       setContent(t); setOriginal(t);
-    } catch (e) { setContent(`; Error: ${String(e)}`); }
+    } catch (e) { setContent(`; 错误：${String(e)}`); }
     finally { setLoading(false); }
   }, [version]);
 
@@ -35,8 +35,8 @@ function MyCnfEditor({ version }: { version: string }) {
   const save = async () => {
     if (!content) return;
     setSaving(true); setMsg('');
-    try { await tauriInvoke('save_mysql_config', { version, content }); setOriginal(content); setMsg('Saved!'); setTimeout(() => setMsg(''), 2000); }
-    catch (e) { setMsg(`Error: ${String(e)}`); }
+    try { await tauriInvoke('save_mysql_config', { version, content }); setOriginal(content); setMsg('已保存！'); setTimeout(() => setMsg(''), 2000); }
+    catch (e) { setMsg(`错误：${String(e)}`); }
     finally { setSaving(false); }
   };
 
@@ -45,8 +45,8 @@ function MyCnfEditor({ version }: { version: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm">{msg && <span className={msg.startsWith('Error') ? 'text-red-500' : 'text-green-500'}>{msg}</span>}{content !== original && !msg && <span className="text-yellow-500">Unsaved</span>}</span>
-        <Button onClick={save} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />Save</Button>
+        <span className="text-sm">{msg && <span className={msg.startsWith('错误') ? 'text-red-500' : 'text-green-500'}>{msg}</span>}{content !== original && !msg && <span className="text-yellow-500">未保存</span>}</span>
+        <Button onClick={save} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />保存</Button>
       </div>
       <textarea className="w-full h-72 font-mono text-xs bg-muted p-3 rounded-md border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
     </div>
@@ -93,18 +93,18 @@ function UserManager({ version }: { version: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{users.length} users</span>
-        <Button variant="outline" onClick={() => setShowForm(!showForm)}><Plus className="h-3 w-3 mr-1" />Add User</Button>
+        <span className="text-sm text-muted-foreground">{users.length} 个用户</span>
+        <Button variant="outline" onClick={() => setShowForm(!showForm)}><Plus className="h-3 w-3 mr-1" />添加用户</Button>
       </div>
 
       {showForm && (
         <div className="grid grid-cols-3 gap-2 p-3 border rounded-md">
-          <div><Label className="text-xs">Username</Label><Input value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} /></div>
-          <div><Label className="text-xs">Password</Label><Input type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} /></div>
-          <div><Label className="text-xs">Host</Label><Input value={newUser.host} onChange={e => setNewUser({ ...newUser, host: e.target.value })} /></div>
+          <div><Label className="text-xs">用户名</Label><Input value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} /></div>
+          <div><Label className="text-xs">密码</Label><Input type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} /></div>
+          <div><Label className="text-xs">主机</Label><Input value={newUser.host} onChange={e => setNewUser({ ...newUser, host: e.target.value })} /></div>
           <div className="col-span-3 flex gap-2">
-            <Button onClick={create} disabled={!newUser.username}><Plus className="h-3 w-3 mr-1" />Create</Button>
-            <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button onClick={create} disabled={!newUser.username}><Plus className="h-3 w-3 mr-1" />创建</Button>
+            <Button variant="ghost" onClick={() => setShowForm(false)}>取消</Button>
           </div>
         </div>
       )}
@@ -119,9 +119,9 @@ function UserManager({ version }: { version: string }) {
             <div className="flex items-center gap-2">
               {changingPw === `${u.user}@${u.host}` ? (
                 <div className="flex gap-1">
-                  <Input className="w-32 h-7 text-xs" type="password" placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} />
-                  <Button className="h-7 text-xs" onClick={() => changePw(u.user, u.host)}>OK</Button>
-                  <Button variant="ghost" className="h-7 text-xs" onClick={() => setChangingPw(null)}>Cancel</Button>
+                  <Input className="w-32 h-7 text-xs" type="password" placeholder="新密码" value={newPw} onChange={e => setNewPw(e.target.value)} />
+                  <Button className="h-7 text-xs" onClick={() => changePw(u.user, u.host)}>确定</Button>
+                  <Button variant="ghost" className="h-7 text-xs" onClick={() => setChangingPw(null)}>取消</Button>
                 </div>
               ) : (
                 <>
@@ -178,8 +178,8 @@ function DatabaseManager({ version }: { version: string }) {
     <div className="space-y-3">
       {error && <div className="p-2 rounded bg-destructive/10 text-destructive text-xs">{error}</div>}
       <div className="flex gap-2">
-        <Input className="flex-1" placeholder="database name" value={newDb} onChange={e => setNewDb(e.target.value)} />
-        <Button onClick={create} disabled={!newDb}><Plus className="h-3 w-3 mr-1" />Create</Button>
+        <Input className="flex-1" placeholder="数据库名称" value={newDb} onChange={e => setNewDb(e.target.value)} />
+        <Button onClick={create} disabled={!newDb}><Plus className="h-3 w-3 mr-1" />创建</Button>
       </div>
       <div className="grid grid-cols-3 gap-1">
         {dbs.map(db => (
@@ -207,7 +207,7 @@ function VersionsTab() {
           <span className="font-mono text-sm">{v.version}</span>
           <span className="text-xs text-muted-foreground">{v.size ? `${(v.size / 1_048_576).toFixed(0)} MB` : ''}</span>
         </div>
-      )) : <p className="text-sm text-muted-foreground">No versions installed.</p>}
+      )) : <p className="text-sm text-muted-foreground">尚未安装任何版本。</p>}
     </div>
   );
 }
@@ -225,21 +225,21 @@ export function MysqlRuntime() {
       <div className="flex items-center gap-3">
         <span className="text-2xl">🐬</span>
         <h1 className="text-2xl font-bold">MySQL</h1>
-        {ver && <Badge variant="outline">Default: {ver}</Badge>}
+        {ver && <Badge variant="outline">默认：{ver}</Badge>}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="versions">Versions</TabsTrigger>
+          <TabsTrigger value="versions">版本</TabsTrigger>
           <TabsTrigger value="config" disabled={!ver}>my.cnf</TabsTrigger>
-          <TabsTrigger value="users" disabled={!ver}>Users</TabsTrigger>
-          <TabsTrigger value="databases" disabled={!ver}>Databases</TabsTrigger>
+          <TabsTrigger value="users" disabled={!ver}>用户</TabsTrigger>
+          <TabsTrigger value="databases" disabled={!ver}>数据库</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="versions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">Installed Versions</CardTitle></CardHeader><CardContent><VersionsTab /></CardContent></Card></TabsContent>
-        <TabsContent value="config" className="mt-4"><Card><CardHeader><CardTitle className="text-base">my.cnf</CardTitle></CardHeader><CardContent>{ver ? <MyCnfEditor key={ver} version={ver} /> : <p className="text-sm text-muted-foreground">Install MySQL first.</p>}</CardContent></Card></TabsContent>
-        <TabsContent value="users" className="mt-4"><Card><CardHeader><CardTitle className="text-base">User Management</CardTitle></CardHeader><CardContent>{ver ? <UserManager key={ver} version={ver} /> : <p className="text-sm text-muted-foreground">Start MySQL first.</p>}</CardContent></Card></TabsContent>
-        <TabsContent value="databases" className="mt-4"><Card><CardHeader><CardTitle className="text-base">Databases</CardTitle></CardHeader><CardContent>{ver ? <DatabaseManager key={ver} version={ver} /> : <p className="text-sm text-muted-foreground">Start MySQL first.</p>}</CardContent></Card></TabsContent>
+        <TabsContent value="versions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">已安装版本</CardTitle></CardHeader><CardContent><VersionsTab /></CardContent></Card></TabsContent>
+        <TabsContent value="config" className="mt-4"><Card><CardHeader><CardTitle className="text-base">my.cnf</CardTitle></CardHeader><CardContent>{ver ? <MyCnfEditor key={ver} version={ver} /> : <p className="text-sm text-muted-foreground">请先安装 MySQL。</p>}</CardContent></Card></TabsContent>
+        <TabsContent value="users" className="mt-4"><Card><CardHeader><CardTitle className="text-base">用户管理</CardTitle></CardHeader><CardContent>{ver ? <UserManager key={ver} version={ver} /> : <p className="text-sm text-muted-foreground">请先启动 MySQL。</p>}</CardContent></Card></TabsContent>
+        <TabsContent value="databases" className="mt-4"><Card><CardHeader><CardTitle className="text-base">数据库</CardTitle></CardHeader><CardContent>{ver ? <DatabaseManager key={ver} version={ver} /> : <p className="text-sm text-muted-foreground">请先启动 MySQL。</p>}</CardContent></Card></TabsContent>
       </Tabs>
     </div>
   );

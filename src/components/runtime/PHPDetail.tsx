@@ -56,19 +56,19 @@ function VersionsTab() {
                 <div key={v.version} className="flex items-center justify-between p-3 rounded-md border">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm">{v.version}</span>
-                    {v.version === defaultVersion && <Badge><Check className="h-3 w-3 mr-1" />Default</Badge>}
+                    {v.version === defaultVersion && <Badge><Check className="h-3 w-3 mr-1" />默认</Badge>}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">{formatBytes(v.size)}</span>
                     {v.version !== defaultVersion && (
-                      <Button variant="ghost" size="sm" onClick={async () => { await switchDefault({ runtime: 'php', version: v.version }); mutate(); }}>Set Default</Button>
+                      <Button variant="ghost" size="sm" onClick={async () => { await switchDefault({ runtime: 'php', version: v.version }); mutate(); }}>设为默认</Button>
                     )}
                     <Button variant="ghost" size="sm" onClick={async () => { await uninstallVersion({ runtime: 'php', version: v.version }); mutate(); }}><Trash2 className="h-3 w-3" /></Button>
                   </div>
                 </div>
               ))}
             </div>
-          ) : <p className="text-sm text-muted-foreground">No versions installed.</p>}
+          ) : <p className="text-sm text-muted-foreground">尚未安装任何版本。</p>}
           {installProgress !== null && (
             <div className="space-y-1">
               <div className="h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary transition-all duration-300" style={{ width: `${installProgress}%` }} /></div>
@@ -76,7 +76,7 @@ function VersionsTab() {
             </div>
           )}
           <div>
-            <h4 className="text-sm font-medium mb-2">Available</h4>
+            <h4 className="text-sm font-medium mb-2">可安装版本</h4>
             {available?.filter((v: VersionInfo) => !v.is_installed).map((v: VersionInfo) => (
               <div key={v.version} className="flex items-center justify-between p-2 rounded-md border hover:bg-muted cursor-pointer mb-1" onClick={() => handleInstall(v.version)}>
                 <span className="font-mono text-sm">{v.version}</span>
@@ -108,8 +108,8 @@ function PhpIniEditor({ version }: { version: string }) {
   };
   const handleSave = async () => {
     if (!content) return; setSaving(true); setMessage('');
-    try { await tauriInvoke('save_php_config', { version, content }); setOriginal(content); setMessage('Saved!'); setTimeout(() => setMessage(''), 2000); }
-    catch (e) { setMessage(`Save failed: ${String(e)}`); }
+    try { await tauriInvoke('save_php_config', { version, content }); setOriginal(content); setMessage('已保存！'); setTimeout(() => setMessage(''), 2000); }
+    catch (e) { setMessage(`保存失败：${String(e)}`); }
     finally { setSaving(false); }
   };
 
@@ -117,8 +117,8 @@ function PhpIniEditor({ version }: { version: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm">{message && <span className="text-green-500">{message}</span>}{content !== original && !message && <span className="text-yellow-500">Unsaved</span>}</span>
-        <Button size="sm" onClick={handleSave} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />Save</Button>
+        <span className="text-sm">{message && <span className="text-green-500">{message}</span>}{content !== original && !message && <span className="text-yellow-500">未保存</span>}</span>
+        <Button size="sm" onClick={handleSave} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />保存</Button>
       </div>
       <textarea className="w-full h-96 font-mono text-xs bg-muted p-3 rounded-md border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
     </div>
@@ -155,7 +155,7 @@ function ExtensionManager({ version }: { version: string }) {
   return (
     <div className="space-y-4">
       <div>
-        <h4 className="text-sm font-medium mb-2">Loadable ({loadable.length})</h4>
+        <h4 className="text-sm font-medium mb-2">可加载扩展（{loadable.length}）</h4>
         <div className="grid grid-cols-2 gap-1">
           {loadable.map(ext => (
             <div key={ext.filename} className="flex items-center justify-between p-2 rounded-md border text-sm">
@@ -167,11 +167,11 @@ function ExtensionManager({ version }: { version: string }) {
               <span className="text-xs text-muted-foreground">{ext.size}</span>
             </div>
           ))}
-          {loadable.length === 0 && <p className="text-sm text-muted-foreground col-span-2">No loadable extensions</p>}
+          {loadable.length === 0 && <p className="text-sm text-muted-foreground col-span-2">没有可加载扩展</p>}
         </div>
       </div>
       <div>
-        <h4 className="text-sm font-medium mb-2">Built-in ({builtinsList.length})</h4>
+        <h4 className="text-sm font-medium mb-2">内置扩展（{builtinsList.length}）</h4>
         <div className="grid grid-cols-3 gap-1">
           {builtinsList.map(ext => (
             <div key={ext.name} className="flex items-center gap-1 text-xs text-muted-foreground p-1"><span className="w-1.5 h-1.5 rounded-full bg-green-400" />{ext.name}</div>
@@ -201,7 +201,7 @@ function PeclInstaller({ version }: { version: string }) {
   const handleInstall = async (name: string) => {
     setInstalling(name); setError(null);
     try { await tauriInvoke('install_pecl_extension', { version, extensionName: name }); await load(); }
-    catch (e) { setError(`Failed: ${String(e)}`); }
+    catch (e) { setError(`失败：${String(e)}`); }
     finally { setInstalling(null); }
   };
 
@@ -215,13 +215,13 @@ function PeclInstaller({ version }: { version: string }) {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm">{ext.name}</span>
-                {ext.installed && <span className="flex items-center gap-1 text-xs text-green-600"><Circle className="h-2 w-2 fill-green-600" />Installed</span>}
+                {ext.installed && <span className="flex items-center gap-1 text-xs text-green-600"><Circle className="h-2 w-2 fill-green-600" />已安装</span>}
               </div>
               <p className="text-xs text-muted-foreground">{ext.description}</p>
             </div>
             <Button size="sm" variant={ext.installed ? "ghost" : "outline"} disabled={ext.installed || installing !== null} onClick={() => handleInstall(ext.name)}>
               {installing === ext.name ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <PackagePlus className="h-3 w-3 mr-1" />}
-              {ext.installed ? 'Installed' : 'Install'}
+              {ext.installed ? '已安装' : '安装'}
             </Button>
           </div>
         ))}
@@ -237,15 +237,15 @@ export function PHPDetail({ version }: { version: string }) {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
-        <TabsTrigger value="versions">Versions</TabsTrigger>
+        <TabsTrigger value="versions">版本</TabsTrigger>
         <TabsTrigger value="ini">php.ini</TabsTrigger>
-        <TabsTrigger value="extensions">Extensions</TabsTrigger>
+        <TabsTrigger value="extensions">扩展</TabsTrigger>
         <TabsTrigger value="pecl">PECL</TabsTrigger>
       </TabsList>
-      <TabsContent value="versions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">Versions</CardTitle></CardHeader><CardContent><VersionsTab /></CardContent></Card></TabsContent>
+      <TabsContent value="versions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">版本</CardTitle></CardHeader><CardContent><VersionsTab /></CardContent></Card></TabsContent>
       <TabsContent value="ini" className="mt-4"><Card><CardHeader><CardTitle className="text-base">php.ini</CardTitle></CardHeader><CardContent><PhpIniEditor key={version} version={version} /></CardContent></Card></TabsContent>
-      <TabsContent value="extensions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">Extensions</CardTitle></CardHeader><CardContent><ExtensionManager key={version} version={version} /></CardContent></Card></TabsContent>
-      <TabsContent value="pecl" className="mt-4"><Card><CardHeader><CardTitle className="text-base">PECL Extensions</CardTitle></CardHeader><CardContent><PeclInstaller key={version} version={version} /></CardContent></Card></TabsContent>
+      <TabsContent value="extensions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">扩展</CardTitle></CardHeader><CardContent><ExtensionManager key={version} version={version} /></CardContent></Card></TabsContent>
+      <TabsContent value="pecl" className="mt-4"><Card><CardHeader><CardTitle className="text-base">PECL 扩展</CardTitle></CardHeader><CardContent><PeclInstaller key={version} version={version} /></CardContent></Card></TabsContent>
     </Tabs>
   );
 }

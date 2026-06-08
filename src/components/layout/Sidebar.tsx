@@ -3,10 +3,10 @@ import { LayoutDashboard, Package, PackageCheck, Settings, Zap } from 'lucide-re
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/runtimes', icon: Package, label: 'Runtimes' },
+  { to: '/dashboard', icon: LayoutDashboard, label: '仪表盘' },
+  { to: '/runtimes', icon: Package, label: '运行环境' },
   { to: '/composer', icon: PackageCheck, label: 'Composer' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/settings', icon: Settings, label: '设置' },
 ];
 
 export function Sidebar() {

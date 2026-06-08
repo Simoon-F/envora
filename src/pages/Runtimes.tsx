@@ -25,7 +25,7 @@ function RuntimeItem({ runtime, selected, onSelect }: { runtime: { type: Runtime
       <span className="text-xl">{runtime.icon}</span>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium">{runtime.name}</div>
-        <div className="text-xs text-muted-foreground">{count} installed</div>
+        <div className="text-xs text-muted-foreground">已安装 {count} 个版本</div>
       </div>
       {count > 0 && <span className={`w-2 h-2 rounded-full ${selected ? 'bg-primary' : 'bg-muted-foreground/30'}`} />}
     </button>
@@ -64,7 +64,7 @@ export function Runtimes() {
     <div className="flex h-full">
       {/* Sidebar */}
       <div className="w-56 border-r p-3 space-y-1 flex-shrink-0">
-        <h2 className="text-sm font-semibold px-3 py-2 text-muted-foreground">Runtimes</h2>
+        <h2 className="text-sm font-semibold px-3 py-2 text-muted-foreground">运行环境</h2>
         {runtimes.map(r => (
           <RuntimeItem
             key={r.type}

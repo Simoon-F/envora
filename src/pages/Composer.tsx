@@ -42,16 +42,16 @@ interface ComposerCommandResult {
 
 const repositoryPresets = [
   { label: 'Packagist', value: 'https://repo.packagist.org' },
-  { label: 'Aliyun', value: 'https://mirrors.aliyun.com/composer/' },
-  { label: 'Tencent', value: 'https://mirrors.cloud.tencent.com/composer/' },
-  { label: 'Huawei', value: 'https://repo.huaweicloud.com/repository/php/' },
+  { label: '阿里云', value: 'https://mirrors.aliyun.com/composer/' },
+  { label: '腾讯云', value: 'https://mirrors.cloud.tencent.com/composer/' },
+  { label: '华为云', value: 'https://repo.huaweicloud.com/repository/php/' },
 ];
 
 const commandPresets = [
-  { label: 'Install', args: ['install'] },
-  { label: 'Update', args: ['update'] },
-  { label: 'Dump Autoload', args: ['dump-autoload'] },
-  { label: 'Diagnose', args: ['diagnose'] },
+  { label: '安装依赖', args: ['install'] },
+  { label: '更新依赖', args: ['update'] },
+  { label: '重建自动加载', args: ['dump-autoload'] },
+  { label: '诊断', args: ['diagnose'] },
 ];
 
 function firstConfigValue(config: ComposerConfigEntry[], key: string) {
@@ -93,7 +93,7 @@ function ComposerStatus() {
     setMessage('');
     try {
       await tauriInvoke('install_composer');
-      setMessage('Composer installed.');
+      setMessage('Composer 已安装。');
       await load();
     } catch (error) {
       setMessage(String(error));
@@ -107,7 +107,7 @@ function ComposerStatus() {
     setMessage('');
     try {
       const result = await tauriInvoke<ComposerCommandResult>('update_composer');
-      setMessage(result.stdout || result.stderr || 'Composer updated.');
+      setMessage(result.stdout || result.stderr || 'Composer 已更新。');
       await load();
     } catch (error) {
       setMessage(String(error));
@@ -132,10 +132,10 @@ function ComposerStatus() {
           </CardHeader>
           <CardContent className="space-y-3">
             <Badge variant={info?.envora_installed ? 'default' : 'secondary'}>
-              {info?.envora_installed ? 'Installed' : 'Not installed'}
+              {info?.envora_installed ? '已安装' : '未安装'}
             </Badge>
-            <StatusRow label="Version" value={info?.envora_version ?? ''} />
-            <StatusRow label="Path" value={info?.envora_path ?? ''} />
+            <StatusRow label="版本" value={info?.envora_version ?? ''} />
+            <StatusRow label="路径" value={info?.envora_path ?? ''} />
           </CardContent>
         </Card>
 
@@ -143,15 +143,15 @@ function ComposerStatus() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Terminal className="h-4 w-4" />
-              PHP Runtime
+              PHP 运行环境
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Badge variant={info?.php_path ? 'default' : 'secondary'}>
-              {info?.php_path ? 'Ready' : 'Missing'}
+              {info?.php_path ? '就绪' : '缺失'}
             </Badge>
-            <StatusRow label="Version" value={info?.php_version ?? ''} />
-            <StatusRow label="Binary" value={info?.php_path ?? ''} />
+            <StatusRow label="版本" value={info?.php_version ?? ''} />
+            <StatusRow label="可执行文件" value={info?.php_path ?? ''} />
           </CardContent>
         </Card>
 
@@ -159,14 +159,14 @@ function ComposerStatus() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="h-4 w-4" />
-              System Composer
+              系统 Composer
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Badge variant={info?.system_available ? 'outline' : 'secondary'}>
-              {info?.system_available ? 'Detected' : 'Not found'}
+              {info?.system_available ? '已检测到' : '未找到'}
             </Badge>
-            <StatusRow label="Version" value={info?.system_version ?? ''} />
+            <StatusRow label="版本" value={info?.system_version ?? ''} />
           </CardContent>
         </Card>
       </div>
@@ -174,15 +174,15 @@ function ComposerStatus() {
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={install} disabled={busy}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          Install / Reinstall
+          安装 / 重新安装
         </Button>
         <Button variant="outline" onClick={update} disabled={busy || !info?.envora_installed}>
           <RefreshCw className="h-4 w-4" />
-          Self Update
+          自我更新
         </Button>
         <Button variant="ghost" onClick={load} disabled={busy}>
           <RefreshCw className="h-4 w-4" />
-          Refresh
+          刷新
         </Button>
         {message && <span className="text-xs text-muted-foreground whitespace-pre-wrap">{message}</span>}
       </div>
@@ -224,7 +224,7 @@ function ComposerConfig() {
     setMessage('');
     try {
       const result = await tauriInvoke<ComposerCommandResult>('set_composer_config', { key, value });
-      setMessage(result.stderr || result.stdout || 'Saved.');
+      setMessage(result.stderr || result.stdout || '已保存。');
       await load();
     } catch (error) {
       setMessage(String(error));
@@ -243,7 +243,7 @@ function ComposerConfig() {
 
       <div className="grid gap-3 lg:grid-cols-3">
         <div className="space-y-2">
-          <Label>Packagist Repository</Label>
+          <Label>Packagist 仓库</Label>
           <Input value={repo} onChange={(event) => setRepo(event.target.value)} placeholder="https://repo.packagist.org" />
           <div className="flex flex-wrap gap-1">
             {repositoryPresets.map((preset) => (
@@ -254,31 +254,31 @@ function ComposerConfig() {
           </div>
           <Button size="sm" onClick={() => saveValue('repo.packagist', repo)} disabled={saving || !repo}>
             <Save className="h-3 w-3" />
-            Save Repository
+            保存仓库
           </Button>
         </div>
 
         <div className="space-y-2">
-          <Label>Process Timeout</Label>
+          <Label>进程超时时间</Label>
           <Input value={timeout} onChange={(event) => setTimeoutValue(event.target.value)} placeholder="300" />
           <Button size="sm" onClick={() => saveValue('process-timeout', timeout)} disabled={saving || !timeout}>
             <Save className="h-3 w-3" />
-            Save Timeout
+            保存超时
           </Button>
         </div>
 
         <div className="space-y-2">
-          <Label>Cache Directory</Label>
+          <Label>缓存目录</Label>
           <Input value={cacheDir} onChange={(event) => setCacheDir(event.target.value)} placeholder="~/.composer/cache" />
           <Button size="sm" onClick={() => saveValue('cache-dir', cacheDir)} disabled={saving || !cacheDir}>
             <Save className="h-3 w-3" />
-            Save Cache
+            保存缓存
           </Button>
         </div>
       </div>
 
       <div className="rounded-md border">
-        <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">Global config</div>
+        <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">全局配置</div>
         <div className="max-h-80 overflow-auto">
           {config.map((entry) => (
             <div key={entry.key} className="grid grid-cols-[240px_1fr] gap-3 border-b px-3 py-2 text-xs last:border-b-0">
@@ -337,17 +337,17 @@ function ComposerRunner() {
     <div className="space-y-4">
       <div className="grid gap-3 lg:grid-cols-[1fr_180px]">
         <div className="space-y-2">
-          <Label>Project Directory</Label>
+          <Label>项目目录</Label>
           <Input value={projectDir} onChange={(event) => setProjectDir(event.target.value)} placeholder="/Users/you/Projects/myapp" />
         </div>
         <div className="space-y-2">
-          <Label>PHP Version</Label>
+          <Label>PHP 版本</Label>
           <select
             className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
             value={selectedPhp}
             onChange={(event) => setPhpVersion(event.target.value)}
           >
-            {!selectedPhp && <option value="">Default PHP</option>}
+            {!selectedPhp && <option value="">默认 PHP</option>}
             {installedPhp?.map((version) => (
               <option key={version.version} value={version.version}>
                 {version.version}
@@ -358,12 +358,12 @@ function ComposerRunner() {
       </div>
 
       <div className="space-y-2">
-        <Label>Composer Arguments</Label>
+        <Label>Composer 参数</Label>
         <div className="flex gap-2">
           <Input value={argsText} onChange={(event) => setArgsText(event.target.value)} placeholder="install --no-interaction" />
           <Button onClick={run} disabled={running || !projectDir || args.length === 0}>
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-            Run
+            运行
           </Button>
         </div>
         <div className="flex flex-wrap gap-1">
@@ -378,7 +378,7 @@ function ComposerRunner() {
       {error && <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">{error}</div>}
       {result && (
         <div className="space-y-2">
-          <Badge variant={result.status === 0 ? 'default' : 'destructive'}>Exit {result.status}</Badge>
+          <Badge variant={result.status === 0 ? 'default' : 'destructive'}>退出码 {result.status}</Badge>
           <pre className="max-h-96 overflow-auto rounded-md border bg-muted p-3 text-xs whitespace-pre-wrap">
             {[result.stdout, result.stderr].filter(Boolean).join('\n')}
           </pre>
@@ -396,20 +396,20 @@ export function Composer() {
       <div className="flex items-center gap-3">
         <Settings2 className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold">Composer</h1>
-        <Badge variant="outline">PHP dependency manager</Badge>
+        <Badge variant="outline">PHP 依赖管理器</Badge>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="status">Status</TabsTrigger>
-          <TabsTrigger value="config">Config</TabsTrigger>
-          <TabsTrigger value="run">Run</TabsTrigger>
+          <TabsTrigger value="status">状态</TabsTrigger>
+          <TabsTrigger value="config">配置</TabsTrigger>
+          <TabsTrigger value="run">运行</TabsTrigger>
         </TabsList>
 
         <TabsContent value="status" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Composer Runtime</CardTitle>
+              <CardTitle className="text-base">Composer 运行环境</CardTitle>
             </CardHeader>
             <CardContent>
               <ComposerStatus />
@@ -420,7 +420,7 @@ export function Composer() {
         <TabsContent value="config" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Global Configuration</CardTitle>
+              <CardTitle className="text-base">全局配置</CardTitle>
             </CardHeader>
             <CardContent>
               <ComposerConfig />
@@ -431,7 +431,7 @@ export function Composer() {
         <TabsContent value="run" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Project Commands</CardTitle>
+              <CardTitle className="text-base">项目命令</CardTitle>
             </CardHeader>
             <CardContent>
               <ComposerRunner />
