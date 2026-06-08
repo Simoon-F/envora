@@ -12,6 +12,7 @@ mod build;
 use state::AppState;
 use tauri::{Emitter, Manager};
 use crate::core::ServiceStatus;
+use crate::sidecar::manager::cleanup_envora_runtime_processes;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -53,6 +54,8 @@ pub fn run() {
             commands::service::restart_service,
             commands::service::start_all_services,
             commands::service::stop_all_services,
+            commands::service::get_service_log,
+            commands::service::clear_service_log,
             // PHP Config
             commands::php_config::get_php_config,
             commands::php_config::save_php_config,
@@ -79,6 +82,8 @@ pub fn run() {
             commands::nginx_config::list_vhosts,
             commands::nginx_config::create_vhost,
             commands::nginx_config::delete_vhost,
+            commands::nginx_config::get_vhost_config,
+            commands::nginx_config::save_vhost_config,
             commands::nginx_config::get_hosts_content,
             commands::nginx_config::add_hosts_entry,
             commands::nginx_config::remove_hosts_entry,
@@ -92,6 +97,24 @@ pub fn run() {
         ])
         .setup(|app| {
             let handle = app.handle().clone();
+
+            // ── Adopt already-running Envora runtimes ───────────
+            if let Some(state) = app.try_state::<AppState>() {
+                let adopted = tauri::async_runtime::block_on(async {
+                    let settings = state.settings.lock().await;
+                    let runtime_dir = settings.get().runtime_dir.clone();
+                    let defaults = settings.get().default_versions.clone();
+                    let logs_dir = state.logs_dir();
+                    drop(settings);
+
+                    let mut sidecar = state.sidecar.lock().await;
+                    sidecar.adopt_existing_envora_processes(&runtime_dir, &logs_dir, &defaults)
+                });
+
+                if adopted > 0 {
+                    tracing::info!("Adopted {} existing Envora runtime process(es)", adopted);
+                }
+            }
 
             // ── System Tray ──────────────────────────────────────
             use tauri::tray::{TrayIconBuilder, MouseButtonState, TrayIconEvent};
@@ -177,6 +200,7 @@ pub fn run() {
                     if let Some(state) = _app.try_state::<AppState>() {
                         let mut sidecar = state.sidecar.lock().await;
                         sidecar.shutdown_all().await;
+                        cleanup_envora_runtime_processes(&state.data_dir);
                     }
                 });
             }

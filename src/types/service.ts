@@ -6,4 +6,5 @@ export interface ServiceInfo {
   status: ServiceStatus;
   pid: number | null;
   port: number | null;
+  error?: string | null;
 }

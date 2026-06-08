@@ -1,9 +1,13 @@
 use std::collections::HashMap;
+use std::io::ErrorKind;
+use std::net::TcpListener;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use tauri::State;
 
 use crate::core::{AppError, ServiceStatus};
-use crate::sidecar::manager::SidecarConfig;
+use crate::sidecar::manager::{cleanup_service_port_listeners, SidecarConfig};
 use crate::state::AppState;
 
 #[derive(serde::Serialize)]
@@ -13,14 +17,26 @@ pub struct ServiceInfo {
     pub status: ServiceStatus,
     pub pid: Option<u32>,
     pub port: Option<u16>,
+    pub error: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+pub struct ServiceLogSection {
+    pub path: String,
+    pub name: String,
+    pub content: String,
+    pub exists: bool,
 }
 
 fn get_service_port(id: &str) -> Option<u16> {
-    match id {
-        "nginx" => Some(80),
-        "mysql" => Some(3306),
-        "php-fpm" => Some(9000),
-        _ => None,
+    if id.starts_with("nginx") {
+        Some(80)
+    } else if id.starts_with("mysql") {
+        Some(3306)
+    } else if id.starts_with("php-fpm") {
+        Some(9000)
+    } else {
+        None
     }
 }
 
@@ -37,6 +53,7 @@ pub async fn get_all_services(state: State<'_, AppState>) -> Result<Vec<ServiceI
             status: p.status.clone(),
             pid: p.pid,
             port: get_service_port(&p.config.id),
+            error: None,
         })
         .collect();
 
@@ -62,7 +79,12 @@ pub async fn start_service(
                     id: format!("nginx-{}", version),
                     name: "Nginx".to_string(),
                     binary_path: binary,
-                    args: vec!["-c".to_string(), conf.to_string_lossy().to_string()],
+                    args: vec![
+                        "-c".to_string(),
+                        conf.to_string_lossy().to_string(),
+                        "-g".to_string(),
+                        "daemon off;".to_string(),
+                    ],
                     env_vars: HashMap::new(),
                     working_dir: None,
                     log_file: Some(state.logs_dir().join("nginx.log")),
@@ -99,7 +121,11 @@ pub async fn start_service(
                     id: format!("php-fpm-{}", version),
                     name: "PHP-FPM".to_string(),
                     binary_path: binary,
-                    args: vec!["--fpm-config".to_string(), conf.to_string_lossy().to_string()],
+                    args: vec![
+                        "-F".to_string(),
+                        "-y".to_string(),
+                        conf.to_string_lossy().to_string(),
+                    ],
                     env_vars: HashMap::new(),
                     working_dir: None,
                     log_file: Some(state.logs_dir().join("php-fpm.log")),
@@ -110,6 +136,8 @@ pub async fn start_service(
         _ => return Err(AppError::ServiceNotFound(service_type)),
     };
 
+    ensure_port_available(&service_type, port)?;
+
     let mut sidecar = state.sidecar.lock().await;
     let process_info = sidecar.spawn(config).await?;
 
@@ -119,6 +147,7 @@ pub async fn start_service(
         status: process_info.status,
         pid: process_info.pid,
         port: Some(port),
+        error: None,
     })
 }
 
@@ -189,6 +218,7 @@ pub async fn start_all_services(
                 status: ServiceStatus::Running,
                 pid: existing[0].pid,
                 port: get_service_port(service_type),
+                error: None,
             });
             drop(sidecar);
             continue;
@@ -197,6 +227,19 @@ pub async fn start_all_services(
 
         // Build service config
         let (config, port) = build_service_config(service_type, &version, &runtime_dir, &logs_dir)?;
+        if let Err(e) = ensure_port_available(service_type, port) {
+            results.push(ServiceInfo {
+                id: format!("{}-{}", service_type, version),
+                name: service_type.to_string(),
+                status: ServiceStatus::Error,
+                pid: None,
+                port: Some(port),
+                error: Some(e.to_string()),
+            });
+            tracing::error!("Failed to start {}: {}", service_type, e);
+            continue;
+        }
+
         let mut sidecar = state.sidecar.lock().await;
         match sidecar.spawn(config).await {
             Ok(info) => {
@@ -206,6 +249,7 @@ pub async fn start_all_services(
                     status: info.status,
                     pid: info.pid,
                     port: Some(port),
+                    error: None,
                 });
             }
             Err(e) => {
@@ -215,6 +259,7 @@ pub async fn start_all_services(
                     status: ServiceStatus::Error,
                     pid: None,
                     port: Some(port),
+                    error: Some(e.to_string()),
                 });
                 tracing::error!("Failed to start {}: {}", service_type, e);
             }
@@ -256,7 +301,12 @@ fn build_service_config(
                     id: format!("nginx-{}", version),
                     name: "Nginx".to_string(),
                     binary_path: binary,
-                    args: vec!["-c".to_string(), conf.to_string_lossy().to_string()],
+                    args: vec![
+                        "-c".to_string(),
+                        conf.to_string_lossy().to_string(),
+                        "-g".to_string(),
+                        "daemon off;".to_string(),
+                    ],
                     env_vars: HashMap::new(),
                     working_dir: None,
                     log_file: Some(logs_dir.join("nginx.log")),
@@ -289,7 +339,11 @@ fn build_service_config(
                     id: format!("php-fpm-{}", version),
                     name: "PHP-FPM".to_string(),
                     binary_path: binary,
-                    args: vec!["-y".to_string(), conf.to_string_lossy().to_string()],
+                    args: vec![
+                        "-F".to_string(),
+                        "-y".to_string(),
+                        conf.to_string_lossy().to_string(),
+                    ],
                     env_vars: HashMap::new(),
                     working_dir: None,
                     log_file: Some(logs_dir.join("php-fpm.log")),
@@ -298,5 +352,180 @@ fn build_service_config(
             ))
         }
         _ => Err(AppError::ServiceNotFound(service_type.to_string())),
+    }
+}
+
+#[tauri::command]
+pub async fn get_service_log(
+    state: State<'_, AppState>,
+    service_type: String,
+    version: String,
+) -> Result<Vec<ServiceLogSection>, AppError> {
+    let paths = service_log_paths(&state, &service_type, &version).await?;
+    Ok(read_log_sections(&paths))
+}
+
+#[tauri::command]
+pub async fn clear_service_log(
+    state: State<'_, AppState>,
+    service_type: String,
+    version: String,
+) -> Result<(), AppError> {
+    let paths = service_log_paths(&state, &service_type, &version).await?;
+
+    for path in paths {
+        if path.exists() {
+            std::fs::OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .open(path)?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn service_log_paths(
+    state: &State<'_, AppState>,
+    service_type: &str,
+    version: &str,
+) -> Result<Vec<PathBuf>, AppError> {
+    let settings = state.settings.lock().await;
+    let runtime_dir = settings.get().runtime_dir.clone();
+    drop(settings);
+
+    let paths = match service_type {
+        "nginx" => vec![
+            state.logs_dir().join("nginx.log"),
+            runtime_dir.join("nginx").join(version).join("logs").join("error.log"),
+            runtime_dir.join("nginx").join(version).join("logs").join("access.log"),
+        ],
+        "php-fpm" => vec![
+            state.logs_dir().join("php-fpm.log"),
+            state.logs_dir().join("php-fpm-access.log"),
+            state.logs_dir().join("php-error.log"),
+        ],
+        "mysql" => vec![
+            state.logs_dir().join("mysql.log"),
+            runtime_dir.join("mysql").join(version).join("logs").join("error.log"),
+        ],
+        _ => return Err(AppError::ServiceNotFound(service_type.to_string())),
+    };
+
+    Ok(paths)
+}
+
+fn read_log_sections(paths: &[PathBuf]) -> Vec<ServiceLogSection> {
+    let mut sections = Vec::new();
+
+    for path in paths {
+        let label = path.display().to_string();
+        let name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .unwrap_or_else(|| label.clone());
+        let exists = path.exists();
+        let content = if path.exists() {
+            read_log_tail(path, 64 * 1024).unwrap_or_else(|e| format!("读取失败：{}", e))
+        } else {
+            "日志文件不存在".to_string()
+        };
+        sections.push(ServiceLogSection {
+            path: label,
+            name,
+            content: content.trim_end().to_string(),
+            exists,
+        });
+    }
+
+    sections
+}
+
+fn read_log_tail(path: &Path, max_bytes: u64) -> std::io::Result<String> {
+    use std::io::{Read, Seek, SeekFrom};
+
+    let mut file = std::fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    let start = len.saturating_sub(max_bytes);
+    file.seek(SeekFrom::Start(start))?;
+
+    let mut buf = Vec::new();
+    file.read_to_end(&mut buf)?;
+    Ok(String::from_utf8_lossy(&buf).into_owned())
+}
+
+fn ensure_port_available(service_type: &str, port: u16) -> Result<(), AppError> {
+    if try_bind_service_port(service_type, port)?.is_none() {
+        return Ok(());
+    }
+
+    cleanup_service_port_listeners(service_type, port);
+    std::thread::sleep(std::time::Duration::from_millis(300));
+
+    if let Some(error) = try_bind_service_port(service_type, port)? {
+        return Err(error);
+    }
+
+    Ok(())
+}
+
+fn try_bind_service_port(service_type: &str, port: u16) -> Result<Option<AppError>, AppError> {
+    let bind_addr = if service_type == "nginx" {
+        format!("0.0.0.0:{}", port)
+    } else {
+        format!("127.0.0.1:{}", port)
+    };
+
+    match TcpListener::bind(&bind_addr) {
+        Ok(listener) => {
+            drop(listener);
+            Ok(None)
+        }
+        Err(e) if e.kind() == ErrorKind::AddrInUse => Ok(Some(AppError::Other(format!(
+            "{} 启动失败：端口 {} 已被占用。\n{}",
+            service_display_name(service_type),
+            port,
+            port_owner_hint(port)
+        )))),
+        Err(e) if e.kind() == ErrorKind::PermissionDenied => Ok(Some(AppError::Other(format!(
+            "{} 启动失败：没有权限监听端口 {}。可以改用更高端口，或用具备权限的方式启动。",
+            service_display_name(service_type),
+            port
+        )))),
+        Err(e) => Err(AppError::Io(e)),
+    }
+}
+
+fn service_display_name(service_type: &str) -> &str {
+    match service_type {
+        "nginx" => "Nginx",
+        "php-fpm" => "PHP-FPM",
+        "mysql" => "MySQL",
+        _ => service_type,
+    }
+}
+
+fn port_owner_hint(port: u16) -> String {
+    #[cfg(unix)]
+    {
+        match Command::new("lsof")
+            .args(["-nP", &format!("-iTCP:{}", port), "-sTCP:LISTEN"])
+            .output()
+        {
+            Ok(output) if output.status.success() => {
+                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if stdout.is_empty() {
+                    "请先停止占用该端口的进程后再启动。".to_string()
+                } else {
+                    format!("当前监听进程：\n{}", stdout)
+                }
+            }
+            _ => "请先停止占用该端口的进程后再启动。".to_string(),
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        "请先停止占用该端口的进程后再启动。".to_string()
     }
 }

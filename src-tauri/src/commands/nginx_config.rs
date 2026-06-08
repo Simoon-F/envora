@@ -26,6 +26,12 @@ pub struct VHostConfig {
     pub port: u16,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct VHostConfFile {
+    pub path: String,
+    pub content: String,
+}
+
 // ── Helpers ────────────────────────────────────────────────────────
 
 fn nginx_dir(settings: &crate::settings::manager::AppSettings, version: &str) -> PathBuf {
@@ -62,13 +68,15 @@ fn save_vhosts(path: &PathBuf, vhosts: &[VirtualHost]) -> Result<(), AppError> {
 
 /// Generate an nginx server block for a virtual host
 fn generate_vhost_conf(vhost: &VirtualHost) -> String {
+    let root_dir = vhost.root_dir.replace('\\', "\\\\").replace('"', "\\\"");
+
     format!(
         "# Virtual host: {domain}\n\
          # Managed by Envora\n\
          server {{\n\
          \x20   listen       {port};\n\
          \x20   server_name  {domain};\n\
-         \x20   root         {root_dir};\n\
+         \x20   root         \"{root_dir}\";\n\
          \x20   index        index.html index.php;\n\
          \n\
          \x20   location / {{\n\
@@ -84,7 +92,7 @@ fn generate_vhost_conf(vhost: &VirtualHost) -> String {
          }}\n",
         domain = vhost.domain,
         port = vhost.port,
-        root_dir = vhost.root_dir,
+        root_dir = root_dir,
     )
 }
 
@@ -101,6 +109,83 @@ fn remove_vhost_conf(settings: &crate::settings::manager::AppSettings, version: 
     if path.exists() {
         std::fs::remove_file(&path)?;
     }
+    Ok(())
+}
+
+fn vhost_conf_path(settings: &crate::settings::manager::AppSettings, version: &str, domain: &str) -> PathBuf {
+    vhosts_dir(settings, version).join(format!("{}.conf", domain))
+}
+
+fn ensure_vhosts_include(settings: &crate::settings::manager::AppSettings, version: &str) -> Result<(), AppError> {
+    let nginx_conf = nginx_dir(settings, version).join("conf").join("nginx.conf");
+    let include_line = format!("    include {}/*.conf;", vhosts_dir(settings, version).display());
+
+    let content = std::fs::read_to_string(&nginx_conf)?;
+    if content.contains(&include_line)
+        || content.contains("conf/vhosts/*.conf")
+        || content.contains("/vhosts/*.conf")
+    {
+        return Ok(());
+    }
+
+    let next_content = if let Some(index) = content.rfind("\n}") {
+        let (head, tail) = content.split_at(index);
+        format!("{}\n\n    # Include Envora site configs\n{}\n{}", head, include_line, tail)
+    } else {
+        format!(
+            "{}\n\n# Include Envora site configs\n{}\n",
+            content.trim_end(),
+            include_line.trim_start()
+        )
+    };
+
+    let backup = nginx_conf.with_extension("nginx.conf.bak");
+    let _ = std::fs::copy(&nginx_conf, &backup);
+    std::fs::write(&nginx_conf, next_content)?;
+
+    Ok(())
+}
+
+fn test_nginx_config(settings: &crate::settings::manager::AppSettings, version: &str) -> Result<(), AppError> {
+    let nginx_bin = nginx_dir(settings, version).join("sbin").join("nginx");
+    let conf = nginx_dir(settings, version).join("conf").join("nginx.conf");
+    let output = PlatformOps::shell_command(&format!(
+        "\"{}\" -t -c \"{}\" 2>&1",
+        nginx_bin.display(),
+        conf.display()
+    ))
+    .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return Err(AppError::Config(format!(
+            "Nginx config syntax error:\n{}{}",
+            stdout, stderr
+        )));
+    }
+
+    Ok(())
+}
+
+fn reload_nginx_config(settings: &crate::settings::manager::AppSettings, version: &str) -> Result<(), AppError> {
+    let nginx_bin = nginx_dir(settings, version).join("sbin").join("nginx");
+    let conf = nginx_dir(settings, version).join("conf").join("nginx.conf");
+
+    let output = PlatformOps::shell_command(&format!(
+        "\"{}\" -s reload -c \"{}\"",
+        nginx_bin.display(),
+        conf.display()
+    ))
+    .output()?;
+
+    if !output.status.success() {
+        return Err(AppError::Other(format!(
+            "Nginx reload failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+
     Ok(())
 }
 
@@ -170,23 +255,7 @@ pub async fn reload_nginx(
     version: String,
 ) -> Result<(), AppError> {
     let settings = state.settings.lock().await;
-    let nginx_bin = nginx_dir(settings.get(), &version).join("sbin").join("nginx");
-    drop(settings);
-
-    let output = PlatformOps::shell_command(&format!(
-        "\"{}\" -s reload",
-        nginx_bin.display()
-    ))
-    .output()?;
-
-    if !output.status.success() {
-        return Err(AppError::Other(format!(
-            "Nginx reload failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )));
-    }
-
-    Ok(())
+    reload_nginx_config(settings.get(), &version)
 }
 
 // ── Virtual Hosts ──────────────────────────────────────────────────
@@ -219,17 +288,21 @@ pub async fn create_vhost(
         hosts_managed: false,
     };
 
+    ensure_vhosts_include(settings.get(), &nginx_version)?;
+
     // Write nginx conf
     write_vhost_conf(settings.get(), &nginx_version, &vhost)?;
+    if let Err(error) = test_nginx_config(settings.get(), &nginx_version) {
+        let _ = remove_vhost_conf(settings.get(), &nginx_version, &vhost.domain);
+        return Err(error);
+    }
 
     // Persist to vhosts.json
     let mut vhosts = load_vhosts(&path);
     vhosts.push(vhost.clone());
     save_vhosts(&path, &vhosts)?;
 
-    // Reload nginx
-    drop(settings);
-    // Ignore reload errors (nginx might not be running)
+    let _ = reload_nginx_config(settings.get(), &nginx_version);
 
     Ok(vhost)
 }
@@ -251,6 +324,71 @@ pub async fn delete_vhost(
     if let Some(v) = vhost {
         remove_vhost_conf(settings.get(), &nginx_version, &v.domain)?;
     }
+
+    let _ = reload_nginx_config(settings.get(), &nginx_version);
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_vhost_config(
+    state: State<'_, AppState>,
+    id: String,
+    nginx_version: String,
+) -> Result<VHostConfFile, AppError> {
+    let settings = state.settings.lock().await;
+    let path = vhosts_file(settings.get());
+    let vhosts = load_vhosts(&path);
+    let vhost = vhosts
+        .iter()
+        .find(|v| v.id == id)
+        .ok_or_else(|| AppError::Config("站点不存在".to_string()))?;
+    let conf_path = vhost_conf_path(settings.get(), &nginx_version, &vhost.domain);
+
+    if !conf_path.exists() {
+        return Err(AppError::Config(format!(
+            "站点配置文件不存在：{}",
+            conf_path.display()
+        )));
+    }
+
+    Ok(VHostConfFile {
+        path: conf_path.display().to_string(),
+        content: std::fs::read_to_string(&conf_path)?,
+    })
+}
+
+#[tauri::command]
+pub async fn save_vhost_config(
+    state: State<'_, AppState>,
+    id: String,
+    nginx_version: String,
+    content: String,
+) -> Result<(), AppError> {
+    let settings = state.settings.lock().await;
+    let path = vhosts_file(settings.get());
+    let vhosts = load_vhosts(&path);
+    let vhost = vhosts
+        .iter()
+        .find(|v| v.id == id)
+        .ok_or_else(|| AppError::Config("站点不存在".to_string()))?;
+    let conf_path = vhost_conf_path(settings.get(), &nginx_version, &vhost.domain);
+    let backup = conf_path.with_extension("conf.bak");
+
+    if conf_path.exists() {
+        let _ = std::fs::copy(&conf_path, &backup);
+    }
+
+    std::fs::write(&conf_path, content)?;
+
+    if let Err(error) = test_nginx_config(settings.get(), &nginx_version) {
+        if backup.exists() {
+            let _ = std::fs::copy(&backup, &conf_path);
+        }
+        return Err(error);
+    }
+
+    let _ = reload_nginx_config(settings.get(), &nginx_version);
 
     Ok(())
 }

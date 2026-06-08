@@ -3,9 +3,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, Plus, Trash2, Globe, RefreshCw, FileText } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, Globe, RefreshCw, FileText, FolderOpen } from 'lucide-react';
+import { open } from '@tauri-apps/plugin-dialog';
 import { useInstalledVersions, useDefaultVersion } from '@/hooks/useRuntimes';
 import { tauriInvoke } from '@/lib/tauri';
 
@@ -17,6 +19,11 @@ interface VirtualHost {
   port: number;
   enabled: boolean;
   hosts_managed: boolean;
+}
+
+interface VHostConfFile {
+  path: string;
+  content: string;
 }
 
 // ── nginx.conf Editor ──────────────────────────────────────────────
@@ -72,11 +79,33 @@ function NginxConfEditor({ version }: { version: string }) {
 // ── Virtual Hosts ──────────────────────────────────────────────────
 
 function VHostManager({ version }: { version: string }) {
+  const { data: defaultPhpVersion } = useDefaultVersion('php');
   const [vhosts, setVhosts] = useState<VirtualHost[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ domain: '', root_dir: '/Users/simonf/Projects/', php_version: version, port: 80 });
+  const [form, setForm] = useState({ domain: '', root_dir: '/Users/simonf/Projects/', php_version: '', port: 80 });
   const [hostsContent, setHostsContent] = useState('');
+  const [formError, setFormError] = useState('');
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configVhost, setConfigVhost] = useState<VirtualHost | null>(null);
+  const [configFile, setConfigFile] = useState<VHostConfFile | null>(null);
+  const [configContent, setConfigContent] = useState('');
+  const [configMessage, setConfigMessage] = useState('');
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
+
+  const chooseRootDir = async () => {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: '选择项目根目录',
+      defaultPath: form.root_dir || undefined,
+    });
+
+    if (typeof selected === 'string') {
+      setForm(current => ({ ...current, root_dir: selected }));
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,10 +121,24 @@ function VHostManager({ version }: { version: string }) {
 
   useEffect(() => { load(); loadHosts(); }, [load]);
 
+  useEffect(() => {
+    if (!defaultPhpVersion) return;
+    setForm(current => (
+      current.php_version && current.php_version !== version
+        ? current
+        : { ...current, php_version: defaultPhpVersion }
+    ));
+  }, [defaultPhpVersion, version]);
+
   const create = async () => {
-    await tauriInvoke('create_vhost', { config: form, nginxVersion: version });
-    setShowForm(false); setForm({ domain: '', root_dir: '/Users/simonf/Projects/', php_version: version, port: 80 });
-    load();
+    setFormError('');
+    try {
+      await tauriInvoke('create_vhost', { config: form, nginxVersion: version });
+      setShowForm(false); setForm({ domain: '', root_dir: '/Users/simonf/Projects/', php_version: defaultPhpVersion || '', port: 80 });
+      load();
+    } catch (e) {
+      setFormError(String(e));
+    }
   };
 
   const remove = async (id: string) => {
@@ -113,6 +156,38 @@ function VHostManager({ version }: { version: string }) {
     loadHosts();
   };
 
+  const openVhostConfig = async (vhost: VirtualHost) => {
+    setConfigOpen(true);
+    setConfigVhost(vhost);
+    setConfigFile(null);
+    setConfigContent('');
+    setConfigMessage('');
+    setConfigLoading(true);
+    try {
+      const file = await tauriInvoke<VHostConfFile>('get_vhost_config', { id: vhost.id, nginxVersion: version });
+      setConfigFile(file);
+      setConfigContent(file.content);
+    } catch (e) {
+      setConfigMessage(String(e));
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const saveVhostConfig = async () => {
+    if (!configVhost) return;
+    setConfigSaving(true);
+    setConfigMessage('');
+    try {
+      await tauriInvoke('save_vhost_config', { id: configVhost.id, nginxVersion: version, content: configContent });
+      setConfigMessage('已保存并重载 nginx');
+    } catch (e) {
+      setConfigMessage(String(e));
+    } finally {
+      setConfigSaving(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
 
   return (
@@ -126,9 +201,22 @@ function VHostManager({ version }: { version: string }) {
         <div className="grid grid-cols-2 gap-2 p-3 border rounded-md">
           <div><Label className="text-xs">域名</Label><Input placeholder="myapp.test" value={form.domain} onChange={e => setForm({ ...form, domain: e.target.value })} /></div>
           <div><Label className="text-xs">端口</Label><Input type="number" value={form.port} onChange={e => setForm({ ...form, port: parseInt(e.target.value) || 80 })} /></div>
-          <div className="col-span-2"><Label className="text-xs">项目根目录</Label><Input placeholder="/Users/xxx/Projects/myapp/public" value={form.root_dir} onChange={e => setForm({ ...form, root_dir: e.target.value })} /></div>
+          <div className="col-span-2">
+            <Label className="text-xs">项目根目录</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="/Users/xxx/Projects/myapp/public"
+                value={form.root_dir}
+                onChange={e => setForm({ ...form, root_dir: e.target.value })}
+              />
+              <Button type="button" variant="outline" onClick={chooseRootDir} title="选择项目根目录">
+                <FolderOpen className="h-3 w-3 mr-1" />选择
+              </Button>
+            </div>
+          </div>
+          {formError && <pre className="col-span-2 max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-red-500/10 p-2 text-xs text-red-600">{formError}</pre>}
           <div className="col-span-2 flex gap-2">
-            <Button onClick={create} disabled={!form.domain}><Plus className="h-3 w-3 mr-1" />创建</Button>
+            <Button onClick={create} disabled={!form.domain || !form.root_dir}><Plus className="h-3 w-3 mr-1" />创建</Button>
             <Button variant="ghost" onClick={() => setShowForm(false)}>取消</Button>
           </div>
         </div>
@@ -147,9 +235,12 @@ function VHostManager({ version }: { version: string }) {
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
               <div>根目录：<code>{v.root_dir}</code></div>
-              <div>PHP: {v.php_version}</div>
+              <div>PHP: {v.php_version && v.php_version !== version ? v.php_version : '未设置'}</div>
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" className="h-7 text-xs" onClick={() => openVhostConfig(v)}>
+                <FileText className="h-3 w-3 mr-1" />配置
+              </Button>
               {!v.hosts_managed ? (
                 <Button variant="outline" className="h-7 text-xs" onClick={() => addHosts(v.domain)}>添加到 /etc/hosts</Button>
               ) : (
@@ -158,7 +249,7 @@ function VHostManager({ version }: { version: string }) {
             </div>
           </div>
         ))}
-        {vhosts.length === 0 && <p className="text-sm text-muted-foreground py-4">尚未配置站点。添加第一个 Hosts 吧。</p>}
+        {vhosts.length === 0 && <p className="text-sm text-muted-foreground py-4">尚未配置站点。添加第一个站点吧。</p>}
       </div>
 
       {/* Hosts file preview */}
@@ -168,6 +259,36 @@ function VHostManager({ version }: { version: string }) {
           <pre className="text-xs font-mono max-h-32 overflow-auto whitespace-pre-wrap bg-muted p-2 rounded">{hostsContent || '加载中...'}</pre>
         </CardContent>
       </Card>
+
+      <Dialog open={configOpen} onOpenChange={setConfigOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader className="pr-10">
+            <DialogTitle>{configVhost?.domain}.conf</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {configFile?.path && <div className="truncate text-xs text-muted-foreground">{configFile.path}</div>}
+            {configMessage && (
+              <pre className={`max-h-28 overflow-auto whitespace-pre-wrap rounded-md p-2 text-xs ${configMessage.startsWith('已保存') ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+                {configMessage}
+              </pre>
+            )}
+            <textarea
+              className="h-[48vh] w-full resize-y rounded-md border bg-muted p-3 font-mono text-xs"
+              value={configContent}
+              onChange={e => setConfigContent(e.target.value)}
+              spellCheck={false}
+              disabled={configLoading}
+              placeholder={configLoading ? '加载中...' : ''}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setConfigOpen(false)}>关闭</Button>
+              <Button onClick={saveVhostConfig} disabled={configLoading || configSaving || !configVhost}>
+                <Save className="h-3 w-3 mr-1" />保存
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -209,12 +330,12 @@ export function NginxRuntime() {
         <TabsList>
           <TabsTrigger value="versions">版本</TabsTrigger>
           <TabsTrigger value="config" disabled={!ver}>nginx.conf</TabsTrigger>
-          <TabsTrigger value="vhosts" disabled={!ver}>Hosts</TabsTrigger>
+          <TabsTrigger value="vhosts" disabled={!ver}>站点</TabsTrigger>
         </TabsList>
 
         <TabsContent value="versions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">已安装版本</CardTitle></CardHeader><CardContent><VersionsTab /></CardContent></Card></TabsContent>
         <TabsContent value="config" className="mt-4"><Card><CardHeader><CardTitle className="text-base">nginx.conf</CardTitle></CardHeader><CardContent>{ver ? <NginxConfEditor key={ver} version={ver} /> : <p className="text-sm text-muted-foreground">请先安装 Nginx。</p>}</CardContent></Card></TabsContent>
-        <TabsContent value="vhosts" className="mt-4"><Card><CardHeader><CardTitle className="text-base">Hosts</CardTitle></CardHeader><CardContent>{ver ? <VHostManager key={ver} version={ver} /> : <p className="text-sm text-muted-foreground">请先安装 Nginx。</p>}</CardContent></Card></TabsContent>
+        <TabsContent value="vhosts" className="mt-4"><Card><CardHeader><CardTitle className="text-base">站点</CardTitle></CardHeader><CardContent>{ver ? <VHostManager key={ver} version={ver} /> : <p className="text-sm text-muted-foreground">请先安装 Nginx。</p>}</CardContent></Card></TabsContent>
       </Tabs>
     </div>
   );

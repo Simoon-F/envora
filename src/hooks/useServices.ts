@@ -2,6 +2,13 @@ import { useTauriSwr } from './useSwr';
 import { useTauriMutation } from './useMutation';
 import type { ServiceInfo } from '@/types/service';
 
+export interface ServiceLogSection {
+  path: string;
+  name: string;
+  content: string;
+  exists: boolean;
+}
+
 export function useAllServices() {
   return useTauriSwr<ServiceInfo[]>(
     'get_all_services',
@@ -37,5 +44,18 @@ export function useStartAllServices() {
 export function useStopAllServices() {
   return useTauriMutation<void, Record<string, never>>(
     'stop_all_services'
+  );
+}
+
+export function useServiceLog(serviceType: string | null, version: string | null) {
+  return useTauriSwr<ServiceLogSection[]>(
+    serviceType && version ? 'get_service_log' : null,
+    serviceType && version ? { serviceType, version } : undefined
+  );
+}
+
+export function useClearServiceLog() {
+  return useTauriMutation<void, { serviceType: string; version: string }>(
+    'clear_service_log'
   );
 }
