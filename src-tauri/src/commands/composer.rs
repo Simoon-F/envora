@@ -1,10 +1,13 @@
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use crate::core::AppError;
+use crate::core::event::emit_progress;
+use crate::core::{AppError, BuildStage, EventPayload};
 use crate::state::AppState;
 
 const COMPOSER_URL: &str = "https://getcomposer.org/download/latest-stable/composer.phar";
@@ -13,6 +16,7 @@ const COMPOSER_URL: &str = "https://getcomposer.org/download/latest-stable/compo
 pub struct ComposerInfo {
     pub envora_installed: bool,
     pub envora_path: String,
+    pub envora_cache_dir: String,
     pub envora_version: Option<String>,
     pub system_available: bool,
     pub system_version: Option<String>,
@@ -43,6 +47,14 @@ pub struct ComposerCommandRequest {
 
 fn composer_phar_path(state: &AppState) -> PathBuf {
     state.bin_dir().join("composer.phar")
+}
+
+fn composer_home_path(state: &AppState) -> PathBuf {
+    state.data_dir.join("composer")
+}
+
+fn composer_cache_path(state: &AppState) -> PathBuf {
+    composer_home_path(state).join("cache")
 }
 
 fn php_binary(
@@ -90,10 +102,15 @@ fn version_from_output(text: &str) -> Option<String> {
 
 fn run_composer(
     composer_phar: &Path,
+    composer_home: &Path,
+    composer_cache: &Path,
     php: Option<&Path>,
     args: &[String],
     cwd: Option<&Path>,
 ) -> Result<ComposerCommandResult, AppError> {
+    std::fs::create_dir_all(composer_home)?;
+    std::fs::create_dir_all(composer_cache)?;
+
     let mut command = if composer_phar.exists() {
         let php = php.ok_or_else(|| {
             AppError::DependencyMissing(
@@ -108,6 +125,8 @@ fn run_composer(
         Command::new("composer")
     };
 
+    command.env("COMPOSER_HOME", composer_home);
+    command.env("COMPOSER_CACHE_DIR", composer_cache);
     command.args(args);
     if let Some(cwd) = cwd {
         command.current_dir(cwd);
@@ -144,13 +163,22 @@ pub async fn get_composer_info(state: State<'_, AppState>) -> Result<ComposerInf
     drop(settings);
 
     let composer_phar = composer_phar_path(&state);
+    let composer_home = composer_home_path(&state);
+    let composer_cache = composer_cache_path(&state);
     let envora_installed = composer_phar.exists();
 
     let envora_version = if envora_installed {
         let args = vec!["--version".to_string(), "--no-ansi".to_string()];
-        run_composer(&composer_phar, php.as_deref(), &args, None)
-            .ok()
-            .and_then(|result| version_from_output(&result.stdout))
+        run_composer(
+            &composer_phar,
+            &composer_home,
+            &composer_cache,
+            php.as_deref(),
+            &args,
+            None,
+        )
+        .ok()
+        .and_then(|result| version_from_output(&result.stdout))
     } else {
         None
     };
@@ -181,6 +209,7 @@ pub async fn get_composer_info(state: State<'_, AppState>) -> Result<ComposerInf
     Ok(ComposerInfo {
         envora_installed,
         envora_path: composer_phar.display().to_string(),
+        envora_cache_dir: composer_cache.display().to_string(),
         envora_version,
         system_available,
         system_version,
@@ -190,14 +219,70 @@ pub async fn get_composer_info(state: State<'_, AppState>) -> Result<ComposerInf
 }
 
 #[tauri::command]
-pub async fn install_composer(state: State<'_, AppState>) -> Result<(), AppError> {
+pub async fn install_composer(
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<(), AppError> {
     let target = composer_phar_path(&state);
     if let Some(parent) = target.parent() {
         std::fs::create_dir_all(parent)?;
     }
+    std::fs::create_dir_all(composer_home_path(&state))?;
+    std::fs::create_dir_all(composer_cache_path(&state))?;
 
-    let bytes = reqwest::get(COMPOSER_URL).await?.bytes().await?;
-    std::fs::write(&target, bytes)?;
+    emit_progress(
+        &app,
+        &EventPayload::BuildProgress {
+            runtime: "composer".to_string(),
+            version: "latest".to_string(),
+            stage: BuildStage::Downloading,
+            message: "准备下载 Composer...".to_string(),
+            percent: 0.0,
+        },
+    );
+
+    let response = reqwest::get(COMPOSER_URL).await?.error_for_status()?;
+    let total = response.content_length().unwrap_or(0);
+    let mut downloaded = 0_u64;
+    let temp_target = target.with_extension("phar.download");
+    let mut file = std::fs::File::create(&temp_target)?;
+    let mut stream = response.bytes_stream();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        file.write_all(&chunk)?;
+        downloaded += chunk.len() as u64;
+
+        let percent = if total > 0 {
+            (downloaded as f64 / total as f64 * 100.0).clamp(0.0, 100.0)
+        } else {
+            0.0
+        };
+        let message = if total > 0 {
+            format!(
+                "下载中... {:.0}% ({:.1} / {:.1} MB)",
+                percent,
+                downloaded as f64 / 1_048_576.0,
+                total as f64 / 1_048_576.0
+            )
+        } else {
+            format!("下载中... {:.1} MB", downloaded as f64 / 1_048_576.0)
+        };
+
+        emit_progress(
+            &app,
+            &EventPayload::BuildProgress {
+                runtime: "composer".to_string(),
+                version: "latest".to_string(),
+                stage: BuildStage::Downloading,
+                message,
+                percent,
+            },
+        );
+    }
+    file.flush()?;
+    drop(file);
+    std::fs::rename(&temp_target, &target)?;
 
     #[cfg(unix)]
     {
@@ -206,6 +291,17 @@ pub async fn install_composer(state: State<'_, AppState>) -> Result<(), AppError
         permissions.set_mode(0o755);
         std::fs::set_permissions(&target, permissions)?;
     }
+
+    emit_progress(
+        &app,
+        &EventPayload::BuildProgress {
+            runtime: "composer".to_string(),
+            version: "latest".to_string(),
+            stage: BuildStage::Installing,
+            message: "Composer 已安装。".to_string(),
+            percent: 100.0,
+        },
+    );
 
     Ok(())
 }
@@ -219,8 +315,17 @@ pub async fn update_composer(
     drop(settings);
 
     let composer_phar = composer_phar_path(&state);
+    let composer_home = composer_home_path(&state);
+    let composer_cache = composer_cache_path(&state);
     let args = vec!["self-update".to_string(), "--no-ansi".to_string()];
-    run_composer(&composer_phar, php.as_deref(), &args, None)
+    run_composer(
+        &composer_phar,
+        &composer_home,
+        &composer_cache,
+        php.as_deref(),
+        &args,
+        None,
+    )
 }
 
 #[tauri::command]
@@ -232,13 +337,22 @@ pub async fn get_composer_config(
     drop(settings);
 
     let composer_phar = composer_phar_path(&state);
+    let composer_home = composer_home_path(&state);
+    let composer_cache = composer_cache_path(&state);
     let args = vec![
         "config".to_string(),
         "--global".to_string(),
         "--list".to_string(),
         "--no-ansi".to_string(),
     ];
-    let result = run_composer(&composer_phar, php.as_deref(), &args, None)?;
+    let result = run_composer(
+        &composer_phar,
+        &composer_home,
+        &composer_cache,
+        php.as_deref(),
+        &args,
+        None,
+    )?;
     if result.status != 0 {
         return Err(AppError::Other(format!(
             "Composer config failed: {}",
@@ -260,6 +374,8 @@ pub async fn set_composer_config(
     drop(settings);
 
     let composer_phar = composer_phar_path(&state);
+    let composer_home = composer_home_path(&state);
+    let composer_cache = composer_cache_path(&state);
     let args = if key == "repo.packagist" {
         vec![
             "config".to_string(),
@@ -279,7 +395,14 @@ pub async fn set_composer_config(
         ]
     };
 
-    run_composer(&composer_phar, php.as_deref(), &args, None)
+    run_composer(
+        &composer_phar,
+        &composer_home,
+        &composer_cache,
+        php.as_deref(),
+        &args,
+        None,
+    )
 }
 
 #[tauri::command]
@@ -300,8 +423,12 @@ pub async fn run_composer_command(
     drop(settings);
 
     let composer_phar = composer_phar_path(&state);
+    let composer_home = composer_home_path(&state);
+    let composer_cache = composer_cache_path(&state);
     run_composer(
         &composer_phar,
+        &composer_home,
+        &composer_cache,
         php.as_deref(),
         &request.args,
         Some(&project_dir),

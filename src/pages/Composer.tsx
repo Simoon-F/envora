@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDefaultVersion, useInstalledVersions } from '@/hooks/useRuntimes';
 import { tauriInvoke } from '@/lib/tauri';
+import { listen } from '@tauri-apps/api/event';
 import {
   CheckCircle2,
   Download,
@@ -22,6 +23,7 @@ import {
 interface ComposerInfo {
   envora_installed: boolean;
   envora_path: string;
+  envora_cache_dir: string;
   envora_version: string | null;
   system_available: boolean;
   system_version: string | null;
@@ -38,6 +40,25 @@ interface ComposerCommandResult {
   status: number;
   stdout: string;
   stderr: string;
+}
+
+interface ComposerProgress {
+  percent: number;
+  message: string;
+}
+
+interface ComposerProgressEvent {
+  type?: string;
+  payload?: {
+    runtime?: string;
+    version?: string;
+    percent?: number;
+    message?: string;
+  };
+  runtime?: string;
+  version?: string;
+  percent?: number;
+  message?: string;
 }
 
 const repositoryPresets = [
@@ -67,55 +88,25 @@ function StatusRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ComposerStatus() {
-  const [info, setInfo] = useState<ComposerInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      setInfo(await tauriInvoke<ComposerInfo>('get_composer_info'));
-    } catch (error) {
-      setMessage(String(error));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const install = async () => {
-    setBusy(true);
-    setMessage('');
-    try {
-      await tauriInvoke('install_composer');
-      setMessage('Composer 已安装。');
-      await load();
-    } catch (error) {
-      setMessage(String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const update = async () => {
-    setBusy(true);
-    setMessage('');
-    try {
-      const result = await tauriInvoke<ComposerCommandResult>('update_composer');
-      setMessage(result.stdout || result.stderr || 'Composer 已更新。');
-      await load();
-    } catch (error) {
-      setMessage(String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
-
+function ComposerStatus({
+  info,
+  loading,
+  busy,
+  message,
+  progress,
+  onInstall,
+  onUpdate,
+  onRefresh,
+}: {
+  info: ComposerInfo | null;
+  loading: boolean;
+  busy: boolean;
+  message: string;
+  progress: ComposerProgress | null;
+  onInstall: () => void;
+  onUpdate: () => void;
+  onRefresh: () => void;
+}) {
   if (loading) {
     return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   }
@@ -136,6 +127,7 @@ function ComposerStatus() {
             </Badge>
             <StatusRow label="版本" value={info?.envora_version ?? ''} />
             <StatusRow label="路径" value={info?.envora_path ?? ''} />
+            <StatusRow label="缓存目录" value={info?.envora_cache_dir ?? ''} />
           </CardContent>
         </Card>
 
@@ -172,20 +164,33 @@ function ComposerStatus() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={install} disabled={busy}>
+        <Button onClick={onInstall} disabled={busy}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           安装 / 重新安装
         </Button>
-        <Button variant="outline" onClick={update} disabled={busy || !info?.envora_installed}>
+        <Button variant="outline" onClick={onUpdate} disabled={busy || !info?.envora_installed}>
           <RefreshCw className="h-4 w-4" />
           自我更新
         </Button>
-        <Button variant="ghost" onClick={load} disabled={busy}>
+        <Button variant="ghost" onClick={onRefresh} disabled={busy}>
           <RefreshCw className="h-4 w-4" />
           刷新
         </Button>
         {message && <span className="text-xs text-muted-foreground whitespace-pre-wrap">{message}</span>}
       </div>
+      {progress && (
+        <div className="space-y-1">
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full bg-primary transition-all duration-300"
+              style={{ width: `${progress.percent}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {progress.message} ({progress.percent.toFixed(0)}%)
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -269,7 +274,7 @@ function ComposerConfig() {
 
         <div className="space-y-2">
           <Label>缓存目录</Label>
-          <Input value={cacheDir} onChange={(event) => setCacheDir(event.target.value)} placeholder="~/.composer/cache" />
+          <Input value={cacheDir} onChange={(event) => setCacheDir(event.target.value)} placeholder="Envora 数据目录/composer/cache" />
           <Button size="sm" onClick={() => saveValue('cache-dir', cacheDir)} disabled={saving || !cacheDir}>
             <Save className="h-3 w-3" />
             保存缓存
@@ -390,6 +395,82 @@ function ComposerRunner() {
 
 export function Composer() {
   const [activeTab, setActiveTab] = useState('status');
+  const [statusInfo, setStatusInfo] = useState<ComposerInfo | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [installProgress, setInstallProgress] = useState<ComposerProgress | null>(null);
+  const installingRef = useRef(false);
+
+  const loadStatus = useCallback(async () => {
+    setStatusLoading(true);
+    try {
+      setStatusInfo(await tauriInvoke<ComposerInfo>('get_composer_info'));
+    } catch (error) {
+      setStatusMessage(String(error));
+    } finally {
+      setStatusLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    listen<ComposerProgressEvent>('envora://progress', (event) => {
+      const payload = event.payload.payload ?? event.payload;
+      if (payload.runtime !== 'composer') return;
+      if (!installingRef.current) return;
+
+      setInstallProgress({
+        percent: payload.percent ?? 0,
+        message: payload.message ?? '处理中...',
+      });
+    }).then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, []);
+
+  const install = async () => {
+    installingRef.current = true;
+    setStatusBusy(true);
+    setStatusMessage('');
+    setInstallProgress({ percent: 0, message: '准备安装 Composer...' });
+    try {
+      await tauriInvoke('install_composer');
+      setStatusMessage('Composer 已安装。');
+      setInstallProgress(null);
+      await loadStatus();
+    } catch (error) {
+      setStatusMessage(String(error));
+    } finally {
+      installingRef.current = false;
+      setInstallProgress(null);
+      setStatusBusy(false);
+    }
+  };
+
+  const update = async () => {
+    setStatusBusy(true);
+    setStatusMessage('');
+    setInstallProgress(null);
+    try {
+      const result = await tauriInvoke<ComposerCommandResult>('update_composer');
+      setStatusMessage(result.stdout || result.stderr || 'Composer 已更新。');
+      await loadStatus();
+    } catch (error) {
+      setStatusMessage(String(error));
+    } finally {
+      setStatusBusy(false);
+    }
+  };
 
   return (
     <div className="p-6 space-y-4">
@@ -412,7 +493,16 @@ export function Composer() {
               <CardTitle className="text-base">Composer 运行环境</CardTitle>
             </CardHeader>
             <CardContent>
-              <ComposerStatus />
+              <ComposerStatus
+                info={statusInfo}
+                loading={statusLoading}
+                busy={statusBusy}
+                message={statusMessage}
+                progress={installProgress}
+                onInstall={install}
+                onUpdate={update}
+                onRefresh={loadStatus}
+              />
             </CardContent>
           </Card>
         </TabsContent>
