@@ -40,7 +40,7 @@ Envora 目前处于早期开发阶段。
 
 | 运行时或工具 | 当前支持 |
 | --- | --- |
-| PHP | macOS 使用 Envora Releases 预编译包，Windows 使用官方归档包 |
+| PHP | macOS 使用 `envora-runtime-packages` Releases 预编译包，Windows 使用官方归档包 |
 | Nginx | 下载源码并在本地构建 |
 | MySQL | 使用 MySQL Community Server 官方归档包 |
 | Composer | Envora 托管 Composer，并检测系统 Composer |
@@ -49,6 +49,9 @@ Envora 目前处于早期开发阶段。
 
 运行时发布和打包说明见
 [docs/release-runtimes.md](docs/release-runtimes.md)。
+
+运行时二进制资产正在拆分到独立仓库：
+[`Simoon-F/envora-runtime-packages`](https://github.com/Simoon-F/envora-runtime-packages)。
 
 ## 技术栈
 

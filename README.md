@@ -54,7 +54,7 @@ reports are valuable.
 
 | Runtime or tool | Current support |
 | --- | --- |
-| PHP | Prebuilt packages for macOS via Envora releases, official Windows archives |
+| PHP | Prebuilt packages for macOS via the `envora-runtime-packages` releases, official Windows archives |
 | Nginx | Source download and local build |
 | MySQL | Official MySQL Community Server archives |
 | Composer | Envora-managed Composer plus system Composer detection |
@@ -63,6 +63,9 @@ reports are valuable.
 
 Runtime release packaging notes live in
 [docs/release-runtimes.md](docs/release-runtimes.md).
+
+Binary runtime assets are being split into a dedicated repository:
+[`Simoon-F/envora-runtime-packages`](https://github.com/Simoon-F/envora-runtime-packages).
 
 ## Tech Stack
 

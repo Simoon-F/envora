@@ -9,9 +9,11 @@ use crate::core::AppError;
 use crate::download::extractor::ArchiveExtractor;
 use crate::download::manager::DownloadManager;
 
-/// GitHub Releases base URL for pre-compiled PHP packages.
+/// GitHub Releases base URL for pre-compiled runtime packages.
+/// Runtime assets live in the dedicated envora-runtime-packages repository.
 /// Release tag: php-{version}, file: php-{version}-macos-{arch}.tar.gz
-const PHP_RELEASES_BASE: &str = "https://github.com/Simoon-F/envora/releases/download";
+const PHP_RELEASES_BASE: &str =
+    "https://github.com/Simoon-F/envora-runtime-packages/releases/download";
 const PHP_WINDOWS_RELEASES_BASE: &str = "https://windows.php.net/downloads/releases/archives";
 
 const PHP_VERSIONS: &[&str] = &["8.4.1", "8.3.14", "8.2.26", "8.1.31"];
