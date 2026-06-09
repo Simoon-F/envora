@@ -2,7 +2,7 @@
 name = "envora"
 version = "0.1.0"
 description = "A Tauri App"
-authors = ["you"]
+authors = ["SIMON FENG <simoon.feng@gmail.com>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -45,4 +45,3 @@ dirs = "6.0.0"
 whoami = "1.6.0"
 nix = { version = "0.31.3", features = ["signal"] }
 async-trait = "0.1.89"
-
