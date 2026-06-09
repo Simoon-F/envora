@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Validate runner architecture
         shell: bash
@@ -48,7 +48,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          brew install autoconf bison re2c pkg-config openssl@3 libxml2 oniguruma curl libiconv sqlite zlib
+          deps=(autoconf bison re2c pkg-config openssl@3 libxml2 oniguruma curl libiconv sqlite zlib)
+          missing=()
+
+          for dep in "${deps[@]}"; do
+            if ! brew list --formula "$dep" >/dev/null 2>&1; then
+              missing+=("$dep")
+            fi
+          done
+
+          if (( ${#missing[@]} > 0 )); then
+            brew install "${missing[@]}"
+          else
+            echo "All PHP build dependencies are already installed."
+          fi
 
       - name: Download PHP source
         shell: bash
@@ -152,7 +165,7 @@ jobs:
           ls -lh "$package" "$package.sha256"
 
       - name: Upload package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: php-${{ inputs.version }}-macos-${{ matrix.arch }}
           path: |
@@ -168,10 +181,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: dist
           merge-multiple: true
