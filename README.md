@@ -2,27 +2,29 @@
 
 [简体中文](README.zh-CN.md) | English
 
-Envora is a desktop local development environment manager for PHP developers.
+Envora is a desktop local development environment manager for runtimes,
+services, and developer toolchains.
 
 It helps you install and switch runtimes, start or stop services, edit common
-configuration files, manage local sites, and keep Composer close at hand from a
-single friendly interface.
+configuration files, manage local sites, and keep language-specific tools close
+at hand from a single friendly interface.
 
 > This project is moving toward open source. The codebase is still young, but
-> the direction is clear: make local PHP development lighter, more visible, and
-> easier to share.
+> the direction is clear: make local development environments lighter, more
+> visible, and easier to share.
 
 ## What Envora Does
 
-- Manage PHP, Nginx, and MySQL runtimes from a desktop app.
+- Manage local runtimes, services, and developer toolchains from a desktop app.
 - Install supported runtime versions with progress feedback.
-- Set default PHP versions and expose runtime binaries to your shell.
+- Set default versions and expose runtime binaries to your shell.
 - Start, stop, restart, and inspect service status.
 - View and clear service logs.
 - Edit `php.ini`, `nginx.conf`, virtual host configs, and `my.cnf`.
 - Create Nginx virtual hosts and manage related `/etc/hosts` entries.
 - Manage MySQL users and databases.
 - Install, update, configure, and run Composer commands.
+- Grow toward Node.js, Rust, Go, Java, npm, pnpm, yarn, and other toolchains.
 - Switch between light, dark, and system themes.
 
 ## Why
@@ -32,30 +34,32 @@ package managers, global services, hidden config files, and old runtime
 versions. Envora aims to make that state visible and manageable without forcing
 developers to give up the tools they already understand.
 
-The goal is not to hide PHP, Nginx, MySQL, or Composer. The goal is to put the
-important controls in one place, keep files editable, and make the local
+The goal is not to hide the tools developers already use. The goal is to put
+the important controls in one place, keep files editable, and make the local
 environment easier to reason about.
 
 ## Current Status
 
 Envora is currently in early development.
 
-The app already contains working runtime, service, configuration, virtual host,
-MySQL, Composer, and settings screens, but the project is not yet a polished
-stable release. Some features may be macOS-first, platform support is still
-being refined, and release packaging is evolving.
+The app already contains working PHP, Nginx, MySQL, Composer, service,
+configuration, virtual host, and settings screens, but the project is not yet a
+polished stable release. Some features may be macOS-first, platform support is
+still being refined, and release packaging is evolving.
 
 If you try it, please expect sharp edges and report anything confusing. Those
 reports are valuable.
 
-## Supported Runtimes
+## Runtime And Toolchain Support
 
-| Runtime | Current support |
+| Runtime or tool | Current support |
 | --- | --- |
 | PHP | Prebuilt packages for macOS via Envora releases, official Windows archives |
 | Nginx | Source download and local build |
 | MySQL | Official MySQL Community Server archives |
 | Composer | Envora-managed Composer plus system Composer detection |
+| Node.js, Rust, Go, Java | Planned |
+| npm, pnpm, yarn | Planned |
 
 Runtime release packaging notes live in
 [docs/release-runtimes.md](docs/release-runtimes.md).
@@ -172,7 +176,8 @@ so we can align on the direction.
 
 ## Roadmap
 
-- Improve cross-platform runtime support.
+- Improve cross-platform runtime and toolchain support.
+- Add Node.js, Rust, Go, Java, npm, pnpm, yarn, and related tooling.
 - Add clearer release packaging and update flows.
 - Expand diagnostics for failed downloads, builds, and service starts.
 - Improve first-run onboarding.
