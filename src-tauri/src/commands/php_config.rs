@@ -21,13 +21,26 @@ fn php_dir(settings: &crate::settings::manager::AppSettings, version: &str) -> P
 
 /// Get the path to php.ini for a specific version
 fn php_ini_path(settings: &crate::settings::manager::AppSettings, version: &str) -> PathBuf {
+    #[cfg(target_os = "windows")]
+    {
+        return php_dir(settings, version).join("php.ini");
+    }
+
     php_dir(settings, version).join("lib").join("php.ini")
 }
 
 /// Get the extension directory for a PHP version
 fn php_ext_dir(settings: &crate::settings::manager::AppSettings, version: &str) -> PathBuf {
+    #[cfg(target_os = "windows")]
+    {
+        return php_dir(settings, version).join("ext");
+    }
+
     // Try to find the extension directory
-    let base = php_dir(settings, version).join("lib").join("php").join("extensions");
+    let base = php_dir(settings, version)
+        .join("lib")
+        .join("php")
+        .join("extensions");
     if base.exists() {
         // Find the subdirectory (e.g., no-debug-non-zts-20240924)
         if let Ok(entries) = std::fs::read_dir(&base) {
@@ -104,7 +117,7 @@ pub async fn list_php_extensions(
             let entry = entry?;
             let path = entry.path();
 
-            // Skip macOS resource fork files (._*) and non-.so files
+            // Skip macOS resource fork files (._*) and non-extension files
             let filename = path
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
@@ -114,18 +127,26 @@ pub async fn list_php_extensions(
                 continue;
             }
 
-            if path.extension().map_or(false, |e| e == "so") {
-                // Extract base name (e.g., "opcache.so" → "opcache")
-                let name = filename
-                    .strip_suffix(".so")
+            let extension_suffix = if cfg!(target_os = "windows") {
+                ".dll"
+            } else {
+                ".so"
+            };
+            if filename.ends_with(extension_suffix) {
+                // Extract base name (e.g., "opcache.so" or "php_curl.dll" -> "curl")
+                let mut name = filename
+                    .strip_suffix(extension_suffix)
                     .unwrap_or(&filename)
                     .to_string();
+                if let Some(stripped) = name.strip_prefix("php_") {
+                    name = stripped.to_string();
+                }
 
                 // Check if this extension is enabled in php.ini
-                let enabled = ini_content
-                    .lines()
-                    .any(|line| line.trim().starts_with("extension=")
-                        && (line.contains(&filename) || line.contains(&name)));
+                let enabled = ini_content.lines().any(|line| {
+                    line.trim().starts_with("extension=")
+                        && (line.contains(&filename) || line.contains(&name))
+                });
 
                 let size = path.metadata().map(|m| m.len()).unwrap_or(0);
                 let size_str = if size >= 1_048_576 {
@@ -254,6 +275,13 @@ pub async fn install_pecl_extension(
 ) -> Result<(), AppError> {
     let settings = state.settings.lock().await;
     let dir = php_dir(settings.get(), &version);
+    #[cfg(target_os = "windows")]
+    {
+        return Err(AppError::DependencyMissing(
+            "PECL source builds are not supported for Envora managed PHP on Windows yet. Use prebuilt Windows DLL extensions that match PHP NTS VS17 x64.".to_string(),
+        ));
+    }
+
     let phpize_bin = dir.join("bin").join("phpize");
     let php_config_bin = dir.join("bin").join("php-config");
     let pecl_bin = dir.join("bin").join("pecl");
@@ -272,8 +300,7 @@ pub async fn install_pecl_extension(
     }
 
     // pecl might not exist — fall back to phpize + configure + make
-    let build_dir = std::path::PathBuf::from("/tmp/envora-pecl")
-        .join(&extension_name);
+    let build_dir = std::path::PathBuf::from("/tmp/envora-pecl").join(&extension_name);
     let _ = std::fs::remove_dir_all(&build_dir);
     std::fs::create_dir_all(&build_dir)?;
 
@@ -311,6 +338,9 @@ pub async fn install_pecl_extension(
 }
 
 fn add_extension_to_ini(install_dir: &std::path::Path, ext_name: &str) -> Result<(), AppError> {
+    #[cfg(target_os = "windows")]
+    let ini_path = install_dir.join("php.ini");
+    #[cfg(not(target_os = "windows"))]
     let ini_path = install_dir.join("lib").join("php.ini");
 
     let content = if ini_path.exists() {

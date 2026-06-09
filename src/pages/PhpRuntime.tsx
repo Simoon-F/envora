@@ -399,6 +399,9 @@ export function PhpRuntime() {
   const [activeTab, setActiveTab] = useState('versions');
 
   const defaultVer = defaultVersion || installed?.[0]?.version || '';
+  const phpIniPath = typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows')
+    ? `~/.envora/runtimes/php/${defaultVer || '{version}'}/php.ini`
+    : `~/.envora/runtimes/php/${defaultVer || '{version}'}/lib/php.ini`;
 
   return (
     <div className="p-6 space-y-4">
@@ -441,7 +444,7 @@ export function PhpRuntime() {
               <CardTitle className="text-base">
                 php.ini
                 <span className="text-xs font-normal text-muted-foreground ml-2">
-                  ~/.envora/runtimes/php/{defaultVer}/lib/php.ini
+                  {phpIniPath}
                 </span>
               </CardTitle>
             </CardHeader>

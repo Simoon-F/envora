@@ -33,10 +33,52 @@ fn get_service_port(id: &str) -> Option<u16> {
         Some(80)
     } else if id.starts_with("mysql") {
         Some(3306)
-    } else if id.starts_with("php-fpm") {
+    } else if id.starts_with("php-fpm") || id.starts_with("php-cgi") {
         Some(9000)
     } else {
         None
+    }
+}
+
+fn php_fastcgi_config(runtime_dir: &Path, logs_dir: &Path, version: &str) -> SidecarConfig {
+    #[cfg(target_os = "windows")]
+    {
+        let install_dir = runtime_dir.join("php").join(version);
+        let mut env_vars = HashMap::new();
+        env_vars.insert(
+            "PHPRC".to_string(),
+            install_dir.to_string_lossy().to_string(),
+        );
+        env_vars.insert("PHP_FCGI_MAX_REQUESTS".to_string(), "1000".to_string());
+
+        return SidecarConfig {
+            id: format!("php-cgi-{}", version),
+            name: "PHP FastCGI".to_string(),
+            binary_path: install_dir.join("php-cgi.exe"),
+            args: vec!["-b".to_string(), "127.0.0.1:9000".to_string()],
+            env_vars,
+            working_dir: Some(install_dir),
+            log_file: Some(logs_dir.join("php-cgi.log")),
+        };
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let install_dir = runtime_dir.join("php").join(version);
+        let conf = install_dir.join("etc").join("php-fpm.conf");
+        SidecarConfig {
+            id: format!("php-fpm-{}", version),
+            name: "PHP-FPM".to_string(),
+            binary_path: install_dir.join("sbin").join("php-fpm"),
+            args: vec![
+                "-F".to_string(),
+                "-y".to_string(),
+                conf.to_string_lossy().to_string(),
+            ],
+            env_vars: HashMap::new(),
+            working_dir: None,
+            log_file: Some(logs_dir.join("php-fpm.log")),
+        }
     }
 }
 
@@ -72,8 +114,16 @@ pub async fn start_service(
 
     let (config, port) = match service_type.as_str() {
         "nginx" => {
-            let binary = runtime_dir.join("nginx").join(&version).join("sbin").join("nginx");
-            let conf = runtime_dir.join("nginx").join(&version).join("conf").join("nginx.conf");
+            let binary = runtime_dir
+                .join("nginx")
+                .join(&version)
+                .join("sbin")
+                .join("nginx");
+            let conf = runtime_dir
+                .join("nginx")
+                .join(&version)
+                .join("conf")
+                .join("nginx.conf");
             (
                 SidecarConfig {
                     id: format!("nginx-{}", version),
@@ -93,7 +143,11 @@ pub async fn start_service(
             )
         }
         "mysql" => {
-            let binary = runtime_dir.join("mysql").join(&version).join("bin").join("mysqld");
+            let binary = runtime_dir
+                .join("mysql")
+                .join(&version)
+                .join("bin")
+                .join("mysqld");
             let my_cnf = runtime_dir.join("mysql").join(&version).join("my.cnf");
             // Ensure logs dir exists (MySQL refuses to start without it)
             let _ = std::fs::create_dir_all(runtime_dir.join("mysql").join(&version).join("logs"));
@@ -113,26 +167,10 @@ pub async fn start_service(
                 3306u16,
             )
         }
-        "php-fpm" => {
-            let binary = runtime_dir.join("php").join(&version).join("sbin").join("php-fpm");
-            let conf = runtime_dir.join("php").join(&version).join("etc").join("php-fpm.conf");
-            (
-                SidecarConfig {
-                    id: format!("php-fpm-{}", version),
-                    name: "PHP-FPM".to_string(),
-                    binary_path: binary,
-                    args: vec![
-                        "-F".to_string(),
-                        "-y".to_string(),
-                        conf.to_string_lossy().to_string(),
-                    ],
-                    env_vars: HashMap::new(),
-                    working_dir: None,
-                    log_file: Some(state.logs_dir().join("php-fpm.log")),
-                },
-                9000u16,
-            )
-        }
+        "php-fpm" => (
+            php_fastcgi_config(&runtime_dir, &state.logs_dir(), &version),
+            9000u16,
+        ),
         _ => return Err(AppError::ServiceNotFound(service_type)),
     };
 
@@ -152,10 +190,7 @@ pub async fn start_service(
 }
 
 #[tauri::command]
-pub async fn stop_service(
-    state: State<'_, AppState>,
-    service_id: String,
-) -> Result<(), AppError> {
+pub async fn stop_service(state: State<'_, AppState>, service_id: String) -> Result<(), AppError> {
     let mut sidecar = state.sidecar.lock().await;
 
     // Find process by service type prefix
@@ -187,9 +222,7 @@ pub async fn restart_service(
 // ── Start All / Stop All ───────────────────────────────────────────
 
 #[tauri::command]
-pub async fn start_all_services(
-    state: State<'_, AppState>,
-) -> Result<Vec<ServiceInfo>, AppError> {
+pub async fn start_all_services(state: State<'_, AppState>) -> Result<Vec<ServiceInfo>, AppError> {
     let mut results = Vec::new();
     let settings = state.settings.lock().await;
     let runtime_dir = settings.get().runtime_dir.clone();
@@ -202,9 +235,18 @@ pub async fn start_all_services(
 
     for service_type in &order {
         let version = match service_type {
-            &"mysql" => defaults.get("mysql").cloned().unwrap_or_else(|| "8.4.3".to_string()),
-            &"php-fpm" => defaults.get("php").cloned().unwrap_or_else(|| "8.4.1".to_string()),
-            &"nginx" => defaults.get("nginx").cloned().unwrap_or_else(|| "1.26.2".to_string()),
+            &"mysql" => defaults
+                .get("mysql")
+                .cloned()
+                .unwrap_or_else(|| "8.4.3".to_string()),
+            &"php-fpm" => defaults
+                .get("php")
+                .cloned()
+                .unwrap_or_else(|| "8.4.1".to_string()),
+            &"nginx" => defaults
+                .get("nginx")
+                .cloned()
+                .unwrap_or_else(|| "1.26.2".to_string()),
             _ => continue,
         };
 
@@ -272,9 +314,7 @@ pub async fn start_all_services(
 }
 
 #[tauri::command]
-pub async fn stop_all_services(
-    state: State<'_, AppState>,
-) -> Result<(), AppError> {
+pub async fn stop_all_services(state: State<'_, AppState>) -> Result<(), AppError> {
     let mut sidecar = state.sidecar.lock().await;
 
     // Stop order: Nginx → PHP-FPM → MySQL (reverse)
@@ -294,8 +334,16 @@ fn build_service_config(
 ) -> Result<(crate::sidecar::manager::SidecarConfig, u16), AppError> {
     match service_type {
         "nginx" => {
-            let binary = runtime_dir.join("nginx").join(version).join("sbin").join("nginx");
-            let conf = runtime_dir.join("nginx").join(version).join("conf").join("nginx.conf");
+            let binary = runtime_dir
+                .join("nginx")
+                .join(version)
+                .join("sbin")
+                .join("nginx");
+            let conf = runtime_dir
+                .join("nginx")
+                .join(version)
+                .join("conf")
+                .join("nginx.conf");
             Ok((
                 crate::sidecar::manager::SidecarConfig {
                     id: format!("nginx-{}", version),
@@ -315,7 +363,11 @@ fn build_service_config(
             ))
         }
         "mysql" => {
-            let binary = runtime_dir.join("mysql").join(version).join("bin").join("mysqld");
+            let binary = runtime_dir
+                .join("mysql")
+                .join(version)
+                .join("bin")
+                .join("mysqld");
             let my_cnf = runtime_dir.join("mysql").join(version).join("my.cnf");
             let _ = std::fs::create_dir_all(runtime_dir.join("mysql").join(version).join("logs"));
             Ok((
@@ -323,7 +375,10 @@ fn build_service_config(
                     id: format!("mysql-{}", version),
                     name: "MySQL".to_string(),
                     binary_path: binary,
-                    args: vec![format!("--defaults-file={}", my_cnf.display()), "--user=root".to_string()],
+                    args: vec![
+                        format!("--defaults-file={}", my_cnf.display()),
+                        "--user=root".to_string(),
+                    ],
                     env_vars: HashMap::new(),
                     working_dir: None,
                     log_file: Some(logs_dir.join("mysql.log")),
@@ -331,26 +386,10 @@ fn build_service_config(
                 3306u16,
             ))
         }
-        "php-fpm" => {
-            let binary = runtime_dir.join("php").join(version).join("sbin").join("php-fpm");
-            let conf = runtime_dir.join("php").join(version).join("etc").join("php-fpm.conf");
-            Ok((
-                crate::sidecar::manager::SidecarConfig {
-                    id: format!("php-fpm-{}", version),
-                    name: "PHP-FPM".to_string(),
-                    binary_path: binary,
-                    args: vec![
-                        "-F".to_string(),
-                        "-y".to_string(),
-                        conf.to_string_lossy().to_string(),
-                    ],
-                    env_vars: HashMap::new(),
-                    working_dir: None,
-                    log_file: Some(logs_dir.join("php-fpm.log")),
-                },
-                9000u16,
-            ))
-        }
+        "php-fpm" => Ok((
+            php_fastcgi_config(&runtime_dir, &logs_dir, version),
+            9000u16,
+        )),
         _ => Err(AppError::ServiceNotFound(service_type.to_string())),
     }
 }
@@ -397,17 +436,33 @@ async fn service_log_paths(
     let paths = match service_type {
         "nginx" => vec![
             state.logs_dir().join("nginx.log"),
-            runtime_dir.join("nginx").join(version).join("logs").join("error.log"),
-            runtime_dir.join("nginx").join(version).join("logs").join("access.log"),
+            runtime_dir
+                .join("nginx")
+                .join(version)
+                .join("logs")
+                .join("error.log"),
+            runtime_dir
+                .join("nginx")
+                .join(version)
+                .join("logs")
+                .join("access.log"),
         ],
         "php-fpm" => vec![
+            #[cfg(target_os = "windows")]
+            state.logs_dir().join("php-cgi.log"),
+            #[cfg(not(target_os = "windows"))]
             state.logs_dir().join("php-fpm.log"),
+            #[cfg(not(target_os = "windows"))]
             state.logs_dir().join("php-fpm-access.log"),
             state.logs_dir().join("php-error.log"),
         ],
         "mysql" => vec![
             state.logs_dir().join("mysql.log"),
-            runtime_dir.join("mysql").join(version).join("logs").join("error.log"),
+            runtime_dir
+                .join("mysql")
+                .join(version)
+                .join("logs")
+                .join("error.log"),
         ],
         _ => return Err(AppError::ServiceNotFound(service_type.to_string())),
     };
@@ -499,6 +554,9 @@ fn try_bind_service_port(service_type: &str, port: u16) -> Result<Option<AppErro
 fn service_display_name(service_type: &str) -> &str {
     match service_type {
         "nginx" => "Nginx",
+        #[cfg(target_os = "windows")]
+        "php-fpm" => "PHP FastCGI",
+        #[cfg(not(target_os = "windows"))]
         "php-fpm" => "PHP-FPM",
         "mysql" => "MySQL",
         _ => service_type,

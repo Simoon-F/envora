@@ -11,8 +11,8 @@ use crate::download::manager::DownloadManager;
 
 /// GitHub Releases base URL for pre-compiled PHP packages.
 /// Release tag: php-{version}, file: php-{version}-macos-{arch}.tar.gz
-const PHP_RELEASES_BASE: &str =
-    "https://github.com/Simoon-F/envora/releases/download";
+const PHP_RELEASES_BASE: &str = "https://github.com/Simoon-F/envora/releases/download";
+const PHP_WINDOWS_RELEASES_BASE: &str = "https://windows.php.net/downloads/releases/archives";
 
 const PHP_VERSIONS: &[&str] = &["8.4.1", "8.3.14", "8.2.26", "8.1.31"];
 
@@ -33,6 +33,7 @@ fn macos_arch() -> &'static str {
 }
 
 /// Build the download URL for a pre-compiled PHP package
+#[cfg(target_os = "macos")]
 fn php_download_url(version: &str) -> String {
     format!(
         "{base}/php-{version}/php-{version}-macos-{arch}.tar.gz",
@@ -40,6 +41,65 @@ fn php_download_url(version: &str) -> String {
         version = version,
         arch = macos_arch(),
     )
+}
+
+#[cfg(target_os = "windows")]
+fn php_download_url(version: &str) -> String {
+    format!(
+        "{base}/php-{version}-nts-Win32-vs17-x64.zip",
+        base = PHP_WINDOWS_RELEASES_BASE,
+        version = version,
+    )
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn php_download_url(version: &str) -> String {
+    format!("https://www.php.net/distributions/php-{}.tar.gz", version)
+}
+
+#[cfg(target_os = "macos")]
+fn php_archive_name(version: &str) -> String {
+    format!("php-{}-macos-{}.tar.gz", version, macos_arch())
+}
+
+#[cfg(target_os = "windows")]
+fn php_archive_name(version: &str) -> String {
+    format!("php-{}-nts-Win32-vs17-x64.zip", version)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn php_archive_name(version: &str) -> String {
+    format!("php-{}.tar.gz", version)
+}
+
+#[cfg(target_os = "macos")]
+fn php_binary_path(install_dir: &std::path::Path) -> PathBuf {
+    install_dir.join("bin").join("php")
+}
+
+#[cfg(target_os = "windows")]
+fn php_binary_path(install_dir: &std::path::Path) -> PathBuf {
+    install_dir.join("php.exe")
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn php_binary_path(install_dir: &std::path::Path) -> PathBuf {
+    install_dir.join("bin").join("php")
+}
+
+#[cfg(target_os = "macos")]
+fn php_ini_path(install_dir: &std::path::Path) -> PathBuf {
+    install_dir.join("lib").join("php.ini")
+}
+
+#[cfg(target_os = "windows")]
+fn php_ini_path(install_dir: &std::path::Path) -> PathBuf {
+    install_dir.join("php.ini")
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn php_ini_path(install_dir: &std::path::Path) -> PathBuf {
+    install_dir.join("lib").join("php.ini")
 }
 
 pub struct PhpProvider {
@@ -118,23 +178,36 @@ impl PhpProvider {
 
     /// Ensure extension_dir is correctly set in php.ini
     fn ensure_extension_dir(install_dir: &std::path::Path) -> Result<(), AppError> {
-        let php_ini = install_dir.join("lib").join("php.ini");
+        let php_ini = php_ini_path(install_dir);
         if !php_ini.exists() {
             return Ok(());
         }
 
         let content = std::fs::read_to_string(&php_ini).unwrap_or_default();
-        if content.lines().any(|l| l.trim().starts_with("extension_dir")) {
+        if content
+            .lines()
+            .any(|l| l.trim().starts_with("extension_dir"))
+        {
             return Ok(()); // already set
         }
 
-        // Find the actual extension directory
+        #[cfg(target_os = "windows")]
+        let base = install_dir.join("ext");
+        #[cfg(not(target_os = "windows"))]
         let base = install_dir.join("lib").join("php").join("extensions");
+
         let mut ext_dir = String::new();
         if base.exists() {
+            #[cfg(target_os = "windows")]
+            {
+                ext_dir = base.display().to_string();
+            }
+            #[cfg(not(target_os = "windows"))]
             if let Ok(entries) = std::fs::read_dir(&base) {
                 for entry in entries.flatten() {
-                    if entry.path().is_dir() && !entry.file_name().to_string_lossy().starts_with("._") {
+                    if entry.path().is_dir()
+                        && !entry.file_name().to_string_lossy().starts_with("._")
+                    {
                         ext_dir = entry.path().display().to_string();
                         break;
                     }
@@ -143,7 +216,7 @@ impl PhpProvider {
         }
 
         if !ext_dir.is_empty() {
-            let new_content = format!("{}\nextension_dir = {}", content.trim_end(), ext_dir);
+            let new_content = format!("{}\nextension_dir = \"{}\"", content.trim_end(), ext_dir);
             std::fs::write(&php_ini, new_content)?;
         }
 
@@ -151,6 +224,7 @@ impl PhpProvider {
     }
 
     /// Generate php-fpm.conf and www pool config for the installed PHP
+    #[cfg(target_os = "macos")]
     fn generate_fpm_configs(install_dir: &std::path::Path) -> Result<(), AppError> {
         let etc_dir = install_dir.join("etc");
         let fpm_d_dir = etc_dir.join("php-fpm.d");
@@ -164,8 +238,7 @@ impl PhpProvider {
 
         // Get current user/group
         let user = whoami::username();
-        let home = dirs::home_dir()
-            .unwrap_or_else(|| std::path::PathBuf::from("."));
+        let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
         let envora_logs = home.join(".envora").join("logs");
         let _ = std::fs::create_dir_all(&envora_logs);
 
@@ -217,6 +290,84 @@ impl PhpProvider {
         );
         std::fs::write(fpm_d_dir.join("www.conf"), www_conf)?;
 
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn generate_fpm_configs(_install_dir: &std::path::Path) -> Result<(), AppError> {
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    fn move_extracted_package(
+        extract_temp: &std::path::Path,
+        install_dir: &std::path::Path,
+    ) -> Result<(), AppError> {
+        // The tar contains `8.4.1/` — move contents to install_dir
+        let inner_dir = extract_temp
+            .read_dir()?
+            .filter_map(|e| e.ok())
+            .find(|e| e.path().is_dir())
+            .map(|e| e.path())
+            .ok_or_else(|| {
+                AppError::Archive("Pre-compiled package has unexpected structure".to_string())
+            })?;
+
+        for entry in std::fs::read_dir(&inner_dir)? {
+            let entry = entry?;
+            let dest = install_dir.join(entry.file_name());
+            std::fs::rename(entry.path(), &dest)?;
+        }
+
+        Ok(())
+    }
+
+    #[cfg(target_os = "windows")]
+    fn move_extracted_package(
+        extract_temp: &std::path::Path,
+        install_dir: &std::path::Path,
+    ) -> Result<(), AppError> {
+        for entry in std::fs::read_dir(extract_temp)? {
+            let entry = entry?;
+            let dest = install_dir.join(entry.file_name());
+            std::fs::rename(entry.path(), &dest)?;
+        }
+
+        Ok(())
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    fn move_extracted_package(
+        extract_temp: &std::path::Path,
+        install_dir: &std::path::Path,
+    ) -> Result<(), AppError> {
+        for entry in std::fs::read_dir(extract_temp)? {
+            let entry = entry?;
+            let dest = install_dir.join(entry.file_name());
+            std::fs::rename(entry.path(), &dest)?;
+        }
+
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    fn sign_runtime_binaries(install_dir: &std::path::Path) -> Result<(), AppError> {
+        for bin_name in &["php", "php-cgi", "php-fpm"] {
+            let bin_path = if *bin_name == "php-fpm" {
+                install_dir.join("sbin").join(bin_name)
+            } else {
+                install_dir.join("bin").join(bin_name)
+            };
+            if bin_path.exists() {
+                PlatformOps::sign_binary(&bin_path)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn sign_runtime_binaries(_install_dir: &std::path::Path) -> Result<(), AppError> {
         Ok(())
     }
 }
@@ -281,7 +432,7 @@ impl RuntimeProvider for PhpProvider {
 
         let download_dir = PathBuf::from("/tmp/envora-download");
         std::fs::create_dir_all(&download_dir)?;
-        let archive_path = download_dir.join(format!("php-{}-macos-{}.tar.gz", version, macos_arch()));
+        let archive_path = download_dir.join(php_archive_name(version));
 
         // Share the progress callback with the download manager via Arc
         let cb_arc = on_progress.take().map(Arc::new);
@@ -292,8 +443,8 @@ impl RuntimeProvider for PhpProvider {
         let download_cb: Option<crate::download::manager::ProgressCallback> =
             cb_arc.as_ref().map(|arc| {
                 let arc = arc.clone();
-                let cb: crate::download::manager::ProgressCallback = Box::new(
-                    move |pct: f64, downloaded: u64, total: u64| {
+                let cb: crate::download::manager::ProgressCallback =
+                    Box::new(move |pct: f64, downloaded: u64, total: u64| {
                         let app_pct = 30.0 * pct / 100.0;
                         let msg = if total > 0 {
                             format!(
@@ -303,51 +454,30 @@ impl RuntimeProvider for PhpProvider {
                                 total as f64 / 1_048_576.0
                             )
                         } else {
-                            format!(
-                                "Downloading... {:.1} MB",
-                                downloaded as f64 / 1_048_576.0
-                            )
+                            format!("Downloading... {:.1} MB", downloaded as f64 / 1_048_576.0)
                         };
                         arc(app_pct, msg);
-                    },
-                );
+                    });
                 cb
             });
 
         DownloadManager::download(&url, &archive_path, download_cb).await?;
 
         // Recover the callback for subsequent steps
-        let on_progress = cb_arc
-            .map(|arc| Arc::try_unwrap(arc).ok())
-            .flatten();
+        let on_progress = cb_arc.map(|arc| Arc::try_unwrap(arc).ok()).flatten();
 
         // Extract directly to install_dir
         if let Some(ref cb) = on_progress {
             cb(30.0, "Extracting...".to_string());
         }
 
-        // Extract to a temp location first since the tar contains a version directory
+        // Extract to a temp location first so platform-specific package layouts can be normalized.
         let extract_temp = download_dir.join(format!("php-extract-{}", version));
         let _ = std::fs::remove_dir_all(&extract_temp);
         std::fs::create_dir_all(&extract_temp)?;
         ArchiveExtractor::extract(&archive_path, &extract_temp)?;
 
-        // The tar contains `8.4.1/` — move contents to install_dir
-        let inner_dir = extract_temp
-            .read_dir()?
-            .filter_map(|e| e.ok())
-            .find(|e| e.path().is_dir())
-            .map(|e| e.path())
-            .ok_or_else(|| {
-                AppError::Archive("Pre-compiled package has unexpected structure".to_string())
-            })?;
-
-        // Move all files from inner_dir to install_dir
-        for entry in std::fs::read_dir(&inner_dir)? {
-            let entry = entry?;
-            let dest = install_dir.join(entry.file_name());
-            std::fs::rename(entry.path(), &dest)?;
-        }
+        Self::move_extracted_package(&extract_temp, &install_dir)?;
 
         // Clean up
         let _ = std::fs::remove_dir_all(&extract_temp);
@@ -364,23 +494,14 @@ impl RuntimeProvider for PhpProvider {
             cb(60.0, "Signing binaries...".to_string());
         }
 
-        for bin_name in &["php", "php-cgi", "php-fpm"] {
-            let bin_path = if *bin_name == "php-fpm" {
-                install_dir.join("sbin").join(bin_name)
-            } else {
-                install_dir.join("bin").join(bin_name)
-            };
-            if bin_path.exists() {
-                PlatformOps::sign_binary(&bin_path)?;
-            }
-        }
+        Self::sign_runtime_binaries(&install_dir)?;
 
         // Generate php.ini
         if let Some(ref cb) = on_progress {
             cb(80.0, "Generating php.ini...".to_string());
         }
 
-        let php_ini = install_dir.join("lib").join("php.ini");
+        let php_ini = php_ini_path(&install_dir);
         if !php_ini.exists() {
             std::fs::write(
                 &php_ini,
@@ -435,6 +556,9 @@ impl RuntimeProvider for PhpProvider {
         // If this was the default, remove the symlink
         let default = self.get_default()?;
         if default.as_deref() == Some(version) {
+            #[cfg(target_os = "windows")]
+            let link = self.bin_dir.join("php.exe");
+            #[cfg(not(target_os = "windows"))]
             let link = self.bin_dir.join("php");
             if link.exists() {
                 std::fs::remove_file(&link)?;
@@ -450,7 +574,7 @@ impl RuntimeProvider for PhpProvider {
 
     fn switch_default(&self, version: &str) -> Result<(), AppError> {
         let install_dir = self.version_dir(version);
-        let php_bin = install_dir.join("bin").join("php");
+        let php_bin = php_binary_path(&install_dir);
 
         if !php_bin.exists() {
             return Err(AppError::VersionNotFound {
@@ -459,6 +583,9 @@ impl RuntimeProvider for PhpProvider {
             });
         }
 
+        #[cfg(target_os = "windows")]
+        let link = self.bin_dir.join("php.exe");
+        #[cfg(not(target_os = "windows"))]
         let link = self.bin_dir.join("php");
         PlatformOps::create_link(&php_bin, &link)?;
 
@@ -474,7 +601,10 @@ impl RuntimeProvider for PhpProvider {
 
     fn get_default(&self) -> Result<Option<String>, AppError> {
         let versions = self.load_installed_versions();
-        Ok(versions.iter().find(|v| v.is_default).map(|v| v.version.clone()))
+        Ok(versions
+            .iter()
+            .find(|v| v.is_default)
+            .map(|v| v.version.clone()))
     }
 }
 
