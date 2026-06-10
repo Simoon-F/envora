@@ -86,7 +86,10 @@ macOS PHP 包至少应包含：
 - `phpize`
 - `php-config`
 - `php.ini`
-- 常用扩展：`curl`、`gd`、`mbstring`、`mysqli`、`openssl`、`pdo_mysql`、`pdo_sqlite`、`sqlite3`、`zlib`
+- 常用内置扩展：`curl`、`mbstring`、`mysqli`、`mysqlnd`、`openssl`、`pdo_mysql`、`pdo_sqlite`、`sqlite3`、`zlib`
+- 常用按需扩展：`bcmath`、`bz2`、`calendar`、`exif`、`ffi`、`ftp`、`gd`、`gettext`、`intl`、`opcache`、`pcntl`、`shmop`、`soap`、`sockets`、`sodium`、`xsl`、`zip`
+
+常用按需扩展应以 loadable `.so` 模块形式随包发布，由 Envora 界面根据项目需要启用或关闭。
 
 如果 Composer 报 `requires ext-gd * -> it is missing from your system`，优先修复 `envora-runtime-packages` 的 GitHub Actions 构建配置，并重新发布带 GD 的 PHP 包。
 
