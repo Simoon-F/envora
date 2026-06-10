@@ -22,6 +22,7 @@ pub struct ComposerInfo {
     pub system_version: Option<String>,
     pub php_path: Option<String>,
     pub php_version: Option<String>,
+    pub php_ini_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -153,6 +154,28 @@ fn version_from_output(text: &str) -> Option<String> {
         .map(|line| line.trim().to_string())
 }
 
+fn loaded_php_ini_path(php: &Path) -> Option<String> {
+    let result = command_output({
+        let mut command = Command::new(php);
+        command.arg("--ini");
+        command
+    })
+    .ok()?;
+
+    let output = format!("{}\n{}", result.stdout, result.stderr);
+    output.lines().find_map(|line| {
+        let value = line
+            .trim()
+            .strip_prefix("Loaded Configuration File:")?
+            .trim();
+        if value.is_empty() || value == "(none)" {
+            None
+        } else {
+            Some(value.to_string())
+        }
+    })
+}
+
 fn run_composer(
     composer_phar: &Path,
     composer_home: &Path,
@@ -259,6 +282,8 @@ pub async fn get_composer_info(state: State<'_, AppState>) -> Result<ComposerInf
         None
     };
 
+    let php_ini_path = php.as_deref().and_then(loaded_php_ini_path);
+
     Ok(ComposerInfo {
         envora_installed,
         envora_path: composer_phar.display().to_string(),
@@ -268,6 +293,7 @@ pub async fn get_composer_info(state: State<'_, AppState>) -> Result<ComposerInf
         system_version,
         php_path: php.as_ref().map(|p| p.display().to_string()),
         php_version,
+        php_ini_path,
     })
 }
 

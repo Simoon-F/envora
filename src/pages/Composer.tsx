@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { useDefaultVersion, useInstalledVersions } from '@/hooks/useRuntimes';
 import { tauriInvoke } from '@/lib/tauri';
 import { listen } from '@tauri-apps/api/event';
 import {
+  AlertTriangle,
   CheckCircle2,
   Download,
   Loader2,
@@ -18,6 +20,7 @@ import {
   Save,
   Settings2,
   Terminal,
+  Wrench,
 } from 'lucide-react';
 
 interface ComposerInfo {
@@ -29,6 +32,7 @@ interface ComposerInfo {
   system_version: string | null;
   php_path: string | null;
   php_version: string | null;
+  php_ini_path: string | null;
 }
 
 interface ComposerConfigEntry {
@@ -74,6 +78,29 @@ const commandPresets = [
   { label: '重建自动加载', args: ['dump-autoload'] },
   { label: '诊断', args: ['diagnose'] },
 ];
+
+function collectMissingExtensions(result: ComposerCommandResult | null) {
+  if (!result) return [];
+
+  const output = [result.stdout, result.stderr].filter(Boolean).join('\n');
+  const extensions = new Set<string>();
+  for (const match of output.matchAll(/requires\s+(ext-[a-z0-9_]+)\s+\*/gi)) {
+    extensions.add(match[1].toLowerCase());
+  }
+  for (const match of output.matchAll(/missing from your system[\s\S]{0,160}?(ext-[a-z0-9_]+)/gi)) {
+    extensions.add(match[1].toLowerCase());
+  }
+
+  return [...extensions];
+}
+
+function extensionHint(extension: string) {
+  const name = extension.replace(/^ext-/, '');
+  if (name === 'gd') {
+    return 'GD 常用于验证码、缩略图、Excel 和图片处理。如果当前 PHP 包里没有 gd.so，需要换用或重新打包带 GD 的 PHP。';
+  }
+  return `当前 PHP 缺少 ${name} 扩展，Composer 不能确认依赖在本机可运行。`;
+}
 
 function firstConfigValue(config: ComposerConfigEntry[], key: string) {
   return config.find((entry) => entry.key === key)?.value ?? '';
@@ -144,6 +171,7 @@ function ComposerStatus({
             </Badge>
             <StatusRow label="版本" value={info?.php_version ?? ''} />
             <StatusRow label="可执行文件" value={info?.php_path ?? ''} />
+            <StatusRow label="php.ini" value={info?.php_ini_path ?? ''} />
           </CardContent>
         </Card>
 
@@ -297,7 +325,68 @@ function ComposerConfig() {
   );
 }
 
-function ComposerRunner() {
+function ComposerIssuePanel({
+  result,
+  info,
+  onOpenPhp,
+  onIgnoreExtension,
+}: {
+  result: ComposerCommandResult | null;
+  info: ComposerInfo | null;
+  onOpenPhp: () => void;
+  onIgnoreExtension: (extension: string) => void;
+}) {
+  const missingExtensions = useMemo(() => collectMissingExtensions(result), [result]);
+
+  if (missingExtensions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <div className="min-w-0 flex-1 space-y-3">
+          <div>
+            <div className="font-medium text-destructive">缺少 PHP 扩展</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Composer 检测到当前 PHP 环境不满足依赖要求。优先修 PHP 运行时，临时忽略只适合先拉起项目。
+            </p>
+          </div>
+
+          <div className="grid gap-2 md:grid-cols-2">
+            {missingExtensions.map((extension) => (
+              <div key={extension} className="rounded-md border bg-background p-2">
+                <div className="font-mono text-xs font-medium">{extension}</div>
+                <p className="mt-1 text-xs text-muted-foreground">{extensionHint(extension)}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <div>PHP: <span className="font-mono">{info?.php_path || '-'}</span></div>
+            <div>php.ini: <span className="font-mono">{info?.php_ini_path || '未检测到，请运行 php --ini 查看'}</span></div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={onOpenPhp}>
+              <Wrench className="h-3.5 w-3.5" />
+              去 PHP 扩展
+            </Button>
+            {missingExtensions.map((extension) => (
+              <Button key={extension} size="sm" variant="ghost" onClick={() => onIgnoreExtension(extension)}>
+                临时忽略 {extension}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComposerRunner({ info }: { info: ComposerInfo | null }) {
+  const navigate = useNavigate();
   const { data: installedPhp } = useInstalledVersions('php');
   const { data: defaultPhp } = useDefaultVersion('php');
   const [projectDir, setProjectDir] = useState('');
@@ -336,6 +425,14 @@ function ComposerRunner() {
     } finally {
       setRunning(false);
     }
+  };
+
+  const appendIgnoreExtension = (extension: string) => {
+    const flag = `--ignore-platform-req=${extension}`;
+    setArgsText((current) => {
+      if (current.includes(flag)) return current;
+      return `${current.trim()} ${flag}`.trim();
+    });
   };
 
   return (
@@ -384,6 +481,12 @@ function ComposerRunner() {
       {result && (
         <div className="space-y-2">
           <Badge variant={result.status === 0 ? 'default' : 'destructive'}>退出码 {result.status}</Badge>
+          <ComposerIssuePanel
+            result={result}
+            info={info}
+            onOpenPhp={() => navigate('/runtimes/php')}
+            onIgnoreExtension={appendIgnoreExtension}
+          />
           <pre className="max-h-96 overflow-auto rounded-md border bg-muted p-3 text-xs whitespace-pre-wrap">
             {[result.stdout, result.stderr].filter(Boolean).join('\n')}
           </pre>
@@ -524,7 +627,7 @@ export function Composer() {
               <CardTitle className="text-base">项目命令</CardTitle>
             </CardHeader>
             <CardContent>
-              <ComposerRunner />
+              <ComposerRunner info={statusInfo} />
             </CardContent>
           </Card>
         </TabsContent>
