@@ -46,8 +46,14 @@ pub fn check_nginx_deps() -> Result<(), AppError> {
     check_build_tools()?;
 
     // Check for pcre
-    let has_pcre = Command::new("pcre2-config").arg("--version").output().is_ok()
-        || Command::new("pkg-config").args(["--exists", "libpcre"]).output().is_ok();
+    let has_pcre = Command::new("pcre2-config")
+        .arg("--version")
+        .output()
+        .is_ok()
+        || Command::new("pkg-config")
+            .args(["--exists", "libpcre"])
+            .output()
+            .is_ok();
 
     if !has_pcre {
         tracing::warn!("pcre not found, nginx may need --without-pcre");

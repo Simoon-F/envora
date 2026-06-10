@@ -139,6 +139,26 @@ fn php_binary(
     None
 }
 
+fn php_install_dir_from_binary(php: &Path) -> Option<PathBuf> {
+    if php.file_name()?.to_string_lossy() != "php" {
+        return None;
+    }
+
+    let bin_dir = php.parent()?;
+    if bin_dir.file_name()?.to_string_lossy() != "bin" {
+        return None;
+    }
+
+    bin_dir.parent().map(|p| p.to_path_buf())
+}
+
+fn apply_php_ini_env(command: &mut Command, php: &Path) {
+    if let Some(install_dir) = php_install_dir_from_binary(php) {
+        command.env("PHPRC", install_dir.join("lib"));
+        command.env("PHP_INI_SCAN_DIR", install_dir.join("etc").join("conf.d"));
+    }
+}
+
 fn command_output(mut command: Command) -> Result<ComposerCommandResult, AppError> {
     let output = command.output()?;
     Ok(ComposerCommandResult {
@@ -157,6 +177,7 @@ fn version_from_output(text: &str) -> Option<String> {
 fn loaded_php_ini_path(php: &Path) -> Option<String> {
     let result = command_output({
         let mut command = Command::new(php);
+        apply_php_ini_env(&mut command, php);
         command.arg("--ini");
         command
     })
@@ -195,6 +216,7 @@ fn run_composer(
             )
         })?;
         let mut command = Command::new(php);
+        apply_php_ini_env(&mut command, php);
         command.arg(composer_phar);
         command
     } else {
@@ -273,6 +295,7 @@ pub async fn get_composer_info(state: State<'_, AppState>) -> Result<ComposerInf
     let php_version = if let Some(ref php_path) = php {
         command_output({
             let mut command = Command::new(php_path);
+            apply_php_ini_env(&mut command, php_path);
             command.arg("-v");
             command
         })

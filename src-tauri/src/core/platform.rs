@@ -75,9 +75,7 @@ impl PlatformOps {
     pub fn check_build_tools() -> Result<(), AppError> {
         #[cfg(target_os = "macos")]
         {
-            let output = Command::new("xcode-select")
-                .arg("-p")
-                .output()?;
+            let output = Command::new("xcode-select").arg("-p").output()?;
 
             if !output.status.success() {
                 return Err(AppError::DependencyMissing(

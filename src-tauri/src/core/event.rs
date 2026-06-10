@@ -28,9 +28,7 @@ pub enum EventPayload {
     },
 
     #[serde(rename = "error")]
-    Error {
-        message: String,
-    },
+    Error { message: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -113,25 +113,27 @@ impl RuntimeProvider for NginxProvider {
         let download_cb: Option<crate::download::manager::ProgressCallback> =
             cb_arc.as_ref().map(|arc| {
                 let arc = arc.clone();
-                let cb: crate::download::manager::ProgressCallback = Box::new(
-                    move |pct: f64, downloaded: u64, total: u64| {
+                let cb: crate::download::manager::ProgressCallback =
+                    Box::new(move |pct: f64, downloaded: u64, total: u64| {
                         let app_pct = 15.0 * pct / 100.0;
                         let msg = if total > 0 {
-                            format!("Downloading... {:.0}% ({:.1} / {:.1} MB)", pct, downloaded as f64 / 1_048_576.0, total as f64 / 1_048_576.0)
+                            format!(
+                                "Downloading... {:.0}% ({:.1} / {:.1} MB)",
+                                pct,
+                                downloaded as f64 / 1_048_576.0,
+                                total as f64 / 1_048_576.0
+                            )
                         } else {
                             format!("Downloading... {:.1} MB", downloaded as f64 / 1_048_576.0)
                         };
                         arc(app_pct, msg);
-                    },
-                );
+                    });
                 cb
             });
 
         DownloadManager::download(url, &archive_path, download_cb).await?;
 
-        let on_progress = cb_arc
-            .map(|arc| Arc::try_unwrap(arc).ok())
-            .flatten();
+        let on_progress = cb_arc.map(|arc| Arc::try_unwrap(arc).ok()).flatten();
 
         // Extract
         if let Some(ref cb) = on_progress {
@@ -193,11 +195,9 @@ impl RuntimeProvider for NginxProvider {
             cb(80.0, "Installing...".to_string());
         }
 
-        let install_output = PlatformOps::shell_command(&format!(
-            "cd \"{}\" && make install",
-            source_dir.display()
-        ))
-        .output()?;
+        let install_output =
+            PlatformOps::shell_command(&format!("cd \"{}\" && make install", source_dir.display()))
+                .output()?;
 
         if !install_output.status.success() {
             return Err(AppError::Build(format!(
@@ -301,7 +301,10 @@ impl RuntimeProvider for NginxProvider {
 
     fn get_default(&self) -> Result<Option<String>, AppError> {
         let versions = self.load_installed_versions();
-        Ok(versions.iter().find(|v| v.is_default).map(|v| v.version.clone()))
+        Ok(versions
+            .iter()
+            .find(|v| v.is_default)
+            .map(|v| v.version.clone()))
     }
 }
 

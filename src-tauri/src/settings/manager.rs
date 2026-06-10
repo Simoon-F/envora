@@ -76,10 +76,7 @@ impl SettingsManager {
         }
 
         // Determine data_dir from config_dir parent
-        let data_dir = data_dir
-            .parent()
-            .unwrap_or(data_dir)
-            .to_path_buf();
+        let data_dir = data_dir.parent().unwrap_or(data_dir).to_path_buf();
 
         AppSettings::new(&data_dir)
     }

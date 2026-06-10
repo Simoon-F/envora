@@ -29,7 +29,11 @@ fn mysql_bin(settings: &crate::settings::manager::AppSettings, version: &str) ->
 }
 
 /// Run a MySQL query and return stdout lines
-fn mysql_query(settings: &crate::settings::manager::AppSettings, version: &str, sql: &str) -> Result<String, AppError> {
+fn mysql_query(
+    settings: &crate::settings::manager::AppSettings,
+    version: &str,
+    sql: &str,
+) -> Result<String, AppError> {
     let mysql = mysql_bin(settings, version);
     // Use TCP connection to avoid socket path issues
     let output = PlatformOps::shell_command(&format!(
@@ -62,7 +66,8 @@ pub async fn get_mysql_config(
 
     if !path.exists() {
         return Err(AppError::Config(format!(
-            "my.cnf not found for MySQL {}", version
+            "my.cnf not found for MySQL {}",
+            version
         )));
     }
 
@@ -95,7 +100,11 @@ pub async fn list_mysql_users(
     version: String,
 ) -> Result<Vec<MysqlUser>, AppError> {
     let settings = state.settings.lock().await;
-    let output = mysql_query(settings.get(), &version, "SELECT user, host FROM mysql.user ORDER BY user")?;
+    let output = mysql_query(
+        settings.get(),
+        &version,
+        "SELECT user, host FROM mysql.user ORDER BY user",
+    )?;
 
     let users: Vec<MysqlUser> = output
         .lines()
@@ -134,7 +143,8 @@ pub async fn create_mysql_user(
     mysql_query(settings.get(), &version, &sql)?;
 
     // Grant basic privileges
-    let grant = format!("GRANT ALL PRIVILEGES ON *.* TO '{}'@'{}' WITH GRANT OPTION",
+    let grant = format!(
+        "GRANT ALL PRIVILEGES ON *.* TO '{}'@'{}' WITH GRANT OPTION",
         username.replace('\'', "\\'"),
         host.replace('\'', "\\'")
     );

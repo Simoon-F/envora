@@ -13,10 +13,7 @@ pub struct BuildConfig {
 }
 
 /// Run a build process: configure → make → make install
-pub async fn run_build<F>(
-    config: BuildConfig,
-    on_progress: F,
-) -> Result<(), AppError>
+pub async fn run_build<F>(config: BuildConfig, on_progress: F) -> Result<(), AppError>
 where
     F: Fn(f64, String) + Send + Sync,
 {
@@ -65,10 +62,7 @@ where
     // Make install
     on_progress(0.8, "Installing...".to_string());
 
-    let install_cmd = format!(
-        "cd \"{}\" && make install",
-        config.source_dir.display()
-    );
+    let install_cmd = format!("cd \"{}\" && make install", config.source_dir.display());
 
     let output = PlatformOps::shell_command(&install_cmd).output()?;
     if !output.status.success() {

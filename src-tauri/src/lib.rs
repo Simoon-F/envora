@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+mod build;
 mod commands;
 mod core;
 mod download;
@@ -7,12 +8,11 @@ mod runtime;
 mod settings;
 mod sidecar;
 mod state;
-mod build;
 
-use state::AppState;
-use tauri::{Emitter, Manager};
 use crate::core::ServiceStatus;
 use crate::sidecar::manager::cleanup_envora_runtime_processes;
+use state::AppState;
+use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -117,8 +117,8 @@ pub fn run() {
             }
 
             // ── System Tray ──────────────────────────────────────
-            use tauri::tray::{TrayIconBuilder, MouseButtonState, TrayIconEvent};
             use tauri::menu::{MenuBuilder, MenuItemBuilder};
+            use tauri::tray::{MouseButtonState, TrayIconBuilder, TrayIconEvent};
 
             let show_item = MenuItemBuilder::with_id("show", "Show Envora").build(app)?;
             let separator = tauri::menu::PredefinedMenuItem::separator(app)?;
@@ -134,19 +134,17 @@ pub fn run() {
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("Envora")
                 .menu(&menu)
-                .on_menu_event(move |app, event| {
-                    match event.id().as_ref() {
-                        "show" => {
-                            if let Some(w) = app.get_webview_window("main") {
-                                let _ = w.show();
-                                let _ = w.set_focus();
-                            }
+                .on_menu_event(move |app, event| match event.id().as_ref() {
+                    "show" => {
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
                         }
-                        "quit" => {
-                            app.exit(0);
-                        }
-                        _ => {}
                     }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
                 })
                 .on_tray_icon_event(move |tray, event| {
                     // macOS: left-click tray icon toggles window
@@ -179,12 +177,15 @@ pub fn run() {
                         let changed = sidecar.health_check_all();
 
                         for info in changed {
-                            let _ = handle.emit("envora://service-status", serde_json::json!({
-                                "id": info.config.id,
-                                "name": info.config.name,
-                                "status": ServiceStatus::Stopped,
-                                "pid": null,
-                            }));
+                            let _ = handle.emit(
+                                "envora://service-status",
+                                serde_json::json!({
+                                    "id": info.config.id,
+                                    "name": info.config.name,
+                                    "status": ServiceStatus::Stopped,
+                                    "pid": null,
+                                }),
+                            );
                         }
                     }
                 }

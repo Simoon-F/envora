@@ -66,6 +66,19 @@ fn php_fastcgi_config(runtime_dir: &Path, logs_dir: &Path, version: &str) -> Sid
     {
         let install_dir = runtime_dir.join("php").join(version);
         let conf = install_dir.join("etc").join("php-fpm.conf");
+        let mut env_vars = HashMap::new();
+        env_vars.insert(
+            "PHPRC".to_string(),
+            install_dir.join("lib").to_string_lossy().to_string(),
+        );
+        env_vars.insert(
+            "PHP_INI_SCAN_DIR".to_string(),
+            install_dir
+                .join("etc")
+                .join("conf.d")
+                .to_string_lossy()
+                .to_string(),
+        );
         SidecarConfig {
             id: format!("php-fpm-{}", version),
             name: "PHP-FPM".to_string(),
@@ -75,7 +88,7 @@ fn php_fastcgi_config(runtime_dir: &Path, logs_dir: &Path, version: &str) -> Sid
                 "-y".to_string(),
                 conf.to_string_lossy().to_string(),
             ],
-            env_vars: HashMap::new(),
+            env_vars,
             working_dir: None,
             log_file: Some(logs_dir.join("php-fpm.log")),
         }

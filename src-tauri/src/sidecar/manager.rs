@@ -71,7 +71,9 @@ impl SidecarManager {
             let mut by_service: HashMap<(String, String), AdoptedRuntimeProcess> = HashMap::new();
 
             for line in stdout.lines() {
-                if let Some(process) = parse_adoptable_envora_process(line, &runtime_dir_text, current_pid) {
+                if let Some(process) =
+                    parse_adoptable_envora_process(line, &runtime_dir_text, current_pid)
+                {
                     let key = (process.service_type.clone(), process.version.clone());
                     by_service
                         .entry(key)
@@ -94,7 +96,9 @@ impl SidecarManager {
                     continue;
                 }
 
-                if let Some(config) = adopted_runtime_config(process, runtime_dir, logs_dir, default_versions) {
+                if let Some(config) =
+                    adopted_runtime_config(process, runtime_dir, logs_dir, default_versions)
+                {
                     let uuid = uuid::Uuid::new_v4().to_string();
                     self.processes.insert(
                         uuid.clone(),
@@ -316,11 +320,15 @@ impl SidecarManager {
         let uuids: Vec<String> = self.processes.keys().cloned().collect();
 
         for uuid in &uuids {
-            let was_running = self.processes.get(uuid)
+            let was_running = self
+                .processes
+                .get(uuid)
                 .map(|p| p.status == ServiceStatus::Running)
                 .unwrap_or(false);
 
-            let alive = self.processes.get(uuid)
+            let alive = self
+                .processes
+                .get(uuid)
                 .and_then(|p| p.pid)
                 .map(is_process_alive)
                 .unwrap_or(false);
@@ -336,8 +344,7 @@ impl SidecarManager {
 
         // Remove dead entries (optional: keep them as "stopped")
         self.processes.retain(|_, info| {
-            info.status == ServiceStatus::Running
-                || info.pid.map(is_process_alive).unwrap_or(false)
+            info.status == ServiceStatus::Running || info.pid.map(is_process_alive).unwrap_or(false)
         });
 
         changed
@@ -386,7 +393,13 @@ pub fn cleanup_service_port_listeners(service_type: &str, port: u16) {
     #[cfg(unix)]
     {
         let output = match std::process::Command::new("lsof")
-            .args(["-nP", &format!("-iTCP:{}", port), "-sTCP:LISTEN", "-F", "pc"])
+            .args([
+                "-nP",
+                &format!("-iTCP:{}", port),
+                "-sTCP:LISTEN",
+                "-F",
+                "pc",
+            ])
             .output()
         {
             Ok(output) => output,
@@ -478,9 +491,7 @@ fn should_stop_lsof_entry(
     expected_command: &str,
     current_user: &str,
 ) -> bool {
-    pid.is_some()
-        && command == expected_command
-        && (owner == current_user || owner.is_empty())
+    pid.is_some() && command == expected_command && (owner == current_user || owner.is_empty())
 }
 
 #[derive(Clone)]
@@ -514,11 +525,7 @@ fn parse_adoptable_envora_process(
         return None;
     }
 
-    for (service_type, dir_name) in [
-        ("nginx", "nginx"),
-        ("php-fpm", "php"),
-        ("mysql", "mysql"),
-    ] {
+    for (service_type, dir_name) in [("nginx", "nginx"), ("php-fpm", "php"), ("mysql", "mysql")] {
         let marker = format!("{}/{}/", runtime_dir, dir_name);
         if let Some(version) = version_after_marker(command, &marker) {
             return Some(AdoptedRuntimeProcess {
@@ -623,9 +630,8 @@ fn parse_envora_runtime_pid(line: &str, runtimes_dir: &str, current_pid: u32) ->
         return None;
     }
 
-    let is_envora_runtime = command.contains("/nginx/")
-        || command.contains("/php/")
-        || command.contains("/mysql/");
+    let is_envora_runtime =
+        command.contains("/nginx/") || command.contains("/php/") || command.contains("/mysql/");
     if is_envora_runtime {
         Some(pid)
     } else {

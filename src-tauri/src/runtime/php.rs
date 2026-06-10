@@ -125,6 +125,39 @@ impl PhpProvider {
         self.php_dir().join(version)
     }
 
+    #[cfg(not(target_os = "windows"))]
+    fn write_php_launcher(&self, version: &str) -> Result<(), AppError> {
+        let install_dir = self.version_dir(version);
+        let php_bin = install_dir.join("bin").join("php");
+        let php_ini_dir = install_dir.join("lib");
+        let conf_d_dir = install_dir.join("etc").join("conf.d");
+        let launcher = self.bin_dir.join("php");
+
+        if let Some(parent) = launcher.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let content = format!(
+            "#!/bin/sh\n\
+             set -e\n\
+             export PHPRC=\"{}\"\n\
+             export PHP_INI_SCAN_DIR=\"{}\"\n\
+             exec \"{}\" \"$@\"\n",
+            php_ini_dir.display(),
+            conf_d_dir.display(),
+            php_bin.display(),
+        );
+
+        std::fs::write(&launcher, content)?;
+
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(&launcher)?.permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&launcher, permissions)?;
+
+        Ok(())
+    }
+
     fn versions_file(&self) -> PathBuf {
         self.php_dir().join("versions.json")
     }
@@ -589,7 +622,15 @@ impl RuntimeProvider for PhpProvider {
         let link = self.bin_dir.join("php.exe");
         #[cfg(not(target_os = "windows"))]
         let link = self.bin_dir.join("php");
+        #[cfg(target_os = "windows")]
         PlatformOps::create_link(&php_bin, &link)?;
+        #[cfg(not(target_os = "windows"))]
+        {
+            if link.exists() {
+                std::fs::remove_file(&link)?;
+            }
+            self.write_php_launcher(version)?;
+        }
 
         // Update versions.json
         let mut versions = self.load_installed_versions();

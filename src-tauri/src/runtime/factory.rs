@@ -1,6 +1,6 @@
+use super::mysql::MysqlProvider;
 use super::nginx::NginxProvider;
 use super::php::PhpProvider;
-use super::mysql::MysqlProvider;
 use super::provider::{RuntimeProvider, RuntimeType};
 use crate::settings::manager::AppSettings;
 

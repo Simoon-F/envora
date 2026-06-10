@@ -3,4 +3,4 @@ pub mod event;
 pub mod platform;
 
 pub use error::AppError;
-pub use event::{EventPayload, ServiceStatus, BuildStage};
+pub use event::{BuildStage, EventPayload, ServiceStatus};

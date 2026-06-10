@@ -96,7 +96,11 @@ fn generate_vhost_conf(vhost: &VirtualHost) -> String {
     )
 }
 
-fn write_vhost_conf(settings: &crate::settings::manager::AppSettings, version: &str, vhost: &VirtualHost) -> Result<(), AppError> {
+fn write_vhost_conf(
+    settings: &crate::settings::manager::AppSettings,
+    version: &str,
+    vhost: &VirtualHost,
+) -> Result<(), AppError> {
     let path = vhosts_dir(settings, version).join(format!("{}.conf", vhost.domain));
     std::fs::create_dir_all(path.parent().unwrap())?;
     let conf = generate_vhost_conf(vhost);
@@ -104,7 +108,11 @@ fn write_vhost_conf(settings: &crate::settings::manager::AppSettings, version: &
     Ok(())
 }
 
-fn remove_vhost_conf(settings: &crate::settings::manager::AppSettings, version: &str, domain: &str) -> Result<(), AppError> {
+fn remove_vhost_conf(
+    settings: &crate::settings::manager::AppSettings,
+    version: &str,
+    domain: &str,
+) -> Result<(), AppError> {
     let path = vhosts_dir(settings, version).join(format!("{}.conf", domain));
     if path.exists() {
         std::fs::remove_file(&path)?;
@@ -112,13 +120,23 @@ fn remove_vhost_conf(settings: &crate::settings::manager::AppSettings, version: 
     Ok(())
 }
 
-fn vhost_conf_path(settings: &crate::settings::manager::AppSettings, version: &str, domain: &str) -> PathBuf {
+fn vhost_conf_path(
+    settings: &crate::settings::manager::AppSettings,
+    version: &str,
+    domain: &str,
+) -> PathBuf {
     vhosts_dir(settings, version).join(format!("{}.conf", domain))
 }
 
-fn ensure_vhosts_include(settings: &crate::settings::manager::AppSettings, version: &str) -> Result<(), AppError> {
+fn ensure_vhosts_include(
+    settings: &crate::settings::manager::AppSettings,
+    version: &str,
+) -> Result<(), AppError> {
     let nginx_conf = nginx_dir(settings, version).join("conf").join("nginx.conf");
-    let include_line = format!("    include {}/*.conf;", vhosts_dir(settings, version).display());
+    let include_line = format!(
+        "    include {}/*.conf;",
+        vhosts_dir(settings, version).display()
+    );
 
     let content = std::fs::read_to_string(&nginx_conf)?;
     if content.contains(&include_line)
@@ -130,7 +148,10 @@ fn ensure_vhosts_include(settings: &crate::settings::manager::AppSettings, versi
 
     let next_content = if let Some(index) = content.rfind("\n}") {
         let (head, tail) = content.split_at(index);
-        format!("{}\n\n    # Include Envora site configs\n{}\n{}", head, include_line, tail)
+        format!(
+            "{}\n\n    # Include Envora site configs\n{}\n{}",
+            head, include_line, tail
+        )
     } else {
         format!(
             "{}\n\n# Include Envora site configs\n{}\n",
@@ -146,7 +167,10 @@ fn ensure_vhosts_include(settings: &crate::settings::manager::AppSettings, versi
     Ok(())
 }
 
-fn test_nginx_config(settings: &crate::settings::manager::AppSettings, version: &str) -> Result<(), AppError> {
+fn test_nginx_config(
+    settings: &crate::settings::manager::AppSettings,
+    version: &str,
+) -> Result<(), AppError> {
     let nginx_bin = nginx_dir(settings, version).join("sbin").join("nginx");
     let conf = nginx_dir(settings, version).join("conf").join("nginx.conf");
     let output = PlatformOps::shell_command(&format!(
@@ -168,7 +192,10 @@ fn test_nginx_config(settings: &crate::settings::manager::AppSettings, version: 
     Ok(())
 }
 
-fn reload_nginx_config(settings: &crate::settings::manager::AppSettings, version: &str) -> Result<(), AppError> {
+fn reload_nginx_config(
+    settings: &crate::settings::manager::AppSettings,
+    version: &str,
+) -> Result<(), AppError> {
     let nginx_bin = nginx_dir(settings, version).join("sbin").join("nginx");
     let conf = nginx_dir(settings, version).join("conf").join("nginx.conf");
 
@@ -197,7 +224,9 @@ pub async fn get_nginx_config(
     version: String,
 ) -> Result<String, AppError> {
     let settings = state.settings.lock().await;
-    let path = nginx_dir(settings.get(), &version).join("conf").join("nginx.conf");
+    let path = nginx_dir(settings.get(), &version)
+        .join("conf")
+        .join("nginx.conf");
 
     if !path.exists() {
         return Err(AppError::Config(format!(
@@ -216,13 +245,17 @@ pub async fn save_nginx_config(
     content: String,
 ) -> Result<(), AppError> {
     let settings = state.settings.lock().await;
-    let path = nginx_dir(settings.get(), &version).join("conf").join("nginx.conf");
+    let path = nginx_dir(settings.get(), &version)
+        .join("conf")
+        .join("nginx.conf");
 
     // Write to a temp file and test syntax first
     let tmp_path = path.with_extension("nginx.conf.tmp");
     std::fs::write(&tmp_path, &content)?;
 
-    let nginx_bin = nginx_dir(settings.get(), &version).join("sbin").join("nginx");
+    let nginx_bin = nginx_dir(settings.get(), &version)
+        .join("sbin")
+        .join("nginx");
     let output = PlatformOps::shell_command(&format!(
         "\"{}\" -t -c \"{}\" 2>&1",
         nginx_bin.display(),
@@ -250,10 +283,7 @@ pub async fn save_nginx_config(
 }
 
 #[tauri::command]
-pub async fn reload_nginx(
-    state: State<'_, AppState>,
-    version: String,
-) -> Result<(), AppError> {
+pub async fn reload_nginx(state: State<'_, AppState>, version: String) -> Result<(), AppError> {
     let settings = state.settings.lock().await;
     reload_nginx_config(settings.get(), &version)
 }
@@ -261,9 +291,7 @@ pub async fn reload_nginx(
 // ── Virtual Hosts ──────────────────────────────────────────────────
 
 #[tauri::command]
-pub async fn list_vhosts(
-    state: State<'_, AppState>,
-) -> Result<Vec<VirtualHost>, AppError> {
+pub async fn list_vhosts(state: State<'_, AppState>) -> Result<Vec<VirtualHost>, AppError> {
     let settings = state.settings.lock().await;
     let path = vhosts_file(settings.get());
     Ok(load_vhosts(&path))
@@ -411,7 +439,9 @@ pub async fn add_hosts_entry(domain: String) -> Result<(), AppError> {
 
     let output = PlatformOps::shell_command(&cmd).output()?;
     if !output.status.success() {
-        return Err(AppError::Other("Failed to add hosts entry — admin password required".to_string()));
+        return Err(AppError::Other(
+            "Failed to add hosts entry — admin password required".to_string(),
+        ));
     }
     Ok(())
 }
@@ -426,7 +456,9 @@ pub async fn remove_hosts_entry(domain: String) -> Result<(), AppError> {
 
     let output = PlatformOps::shell_command(&cmd).output()?;
     if !output.status.success() {
-        return Err(AppError::Other("Failed to remove hosts entry — admin password required".to_string()));
+        return Err(AppError::Other(
+            "Failed to remove hosts entry — admin password required".to_string(),
+        ));
     }
     Ok(())
 }

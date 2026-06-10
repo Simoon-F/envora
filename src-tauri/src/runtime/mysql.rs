@@ -14,13 +14,25 @@ use crate::download::manager::DownloadManager;
 // Note: MySQL 8.0.x releases stopped around 8.0.37
 const MYSQL_VERSIONS: &[(&str, &str)] = &[
     #[cfg(target_os = "macos")]
-    ("8.4.3", "https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.3-macos14-arm64.tar.gz"),
+    (
+        "8.4.3",
+        "https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.3-macos14-arm64.tar.gz",
+    ),
     #[cfg(target_os = "macos")]
-    ("8.0.37", "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.37-macos14-arm64.tar.gz"),
+    (
+        "8.0.37",
+        "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.37-macos14-arm64.tar.gz",
+    ),
     #[cfg(target_os = "windows")]
-    ("8.4.3", "https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.3-winx64.zip"),
+    (
+        "8.4.3",
+        "https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.3-winx64.zip",
+    ),
     #[cfg(target_os = "windows")]
-    ("8.0.37", "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.37-winx64.zip"),
+    (
+        "8.0.37",
+        "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.37-winx64.zip",
+    ),
 ];
 
 pub struct MysqlProvider {
@@ -131,25 +143,27 @@ impl RuntimeProvider for MysqlProvider {
         let download_cb: Option<crate::download::manager::ProgressCallback> =
             cb_arc.as_ref().map(|arc| {
                 let arc = arc.clone();
-                let cb: crate::download::manager::ProgressCallback = Box::new(
-                    move |pct: f64, downloaded: u64, total: u64| {
+                let cb: crate::download::manager::ProgressCallback =
+                    Box::new(move |pct: f64, downloaded: u64, total: u64| {
                         let app_pct = 20.0 * pct / 100.0;
                         let msg = if total > 0 {
-                            format!("Downloading... {:.0}% ({:.1} / {:.1} MB)", pct, downloaded as f64 / 1_048_576.0, total as f64 / 1_048_576.0)
+                            format!(
+                                "Downloading... {:.0}% ({:.1} / {:.1} MB)",
+                                pct,
+                                downloaded as f64 / 1_048_576.0,
+                                total as f64 / 1_048_576.0
+                            )
                         } else {
                             format!("Downloading... {:.1} MB", downloaded as f64 / 1_048_576.0)
                         };
                         arc(app_pct, msg);
-                    },
-                );
+                    });
                 cb
             });
 
         DownloadManager::download(url, &archive_path, download_cb).await?;
 
-        let on_progress = cb_arc
-            .map(|arc| Arc::try_unwrap(arc).ok())
-            .flatten();
+        let on_progress = cb_arc.map(|arc| Arc::try_unwrap(arc).ok()).flatten();
 
         // Extract
         if let Some(ref cb) = on_progress {
@@ -300,7 +314,10 @@ impl RuntimeProvider for MysqlProvider {
 
     fn get_default(&self) -> Result<Option<String>, AppError> {
         let versions = self.load_installed_versions();
-        Ok(versions.iter().find(|v| v.is_default).map(|v| v.version.clone()))
+        Ok(versions
+            .iter()
+            .find(|v| v.is_default)
+            .map(|v| v.version.clone()))
     }
 }
 
