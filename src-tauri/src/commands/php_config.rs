@@ -54,6 +54,50 @@ fn php_ext_dir(settings: &crate::settings::manager::AppSettings, version: &str) 
     base
 }
 
+fn extension_suffix() -> &'static str {
+    if cfg!(target_os = "windows") {
+        ".dll"
+    } else {
+        ".so"
+    }
+}
+
+fn extension_base_name(filename: &str) -> String {
+    let mut name = filename
+        .strip_suffix(extension_suffix())
+        .unwrap_or(filename)
+        .to_string();
+    if let Some(stripped) = name.strip_prefix("php_") {
+        name = stripped.to_string();
+    }
+    name
+}
+
+fn extension_directive(filename: &str) -> &'static str {
+    if extension_base_name(filename) == "opcache" {
+        "zend_extension"
+    } else {
+        "extension"
+    }
+}
+
+fn extension_ini_line(filename: &str) -> String {
+    format!("{}={}", extension_directive(filename), filename)
+}
+
+fn line_loads_extension(line: &str, filename: &str) -> bool {
+    let trimmed = line.trim();
+    let name = extension_base_name(filename);
+    let directive = extension_directive(filename);
+    let direct_match = trimmed.starts_with(&format!("{}=", directive))
+        && (trimmed.contains(filename) || trimmed.contains(&name));
+    let legacy_opcache_match = name == "opcache"
+        && trimmed.starts_with("extension=")
+        && (trimmed.contains(filename) || trimmed.contains(&name));
+
+    direct_match || legacy_opcache_match
+}
+
 // ── php.ini ────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -127,26 +171,14 @@ pub async fn list_php_extensions(
                 continue;
             }
 
-            let extension_suffix = if cfg!(target_os = "windows") {
-                ".dll"
-            } else {
-                ".so"
-            };
-            if filename.ends_with(extension_suffix) {
+            if filename.ends_with(extension_suffix()) {
                 // Extract base name (e.g., "opcache.so" or "php_curl.dll" -> "curl")
-                let mut name = filename
-                    .strip_suffix(extension_suffix)
-                    .unwrap_or(&filename)
-                    .to_string();
-                if let Some(stripped) = name.strip_prefix("php_") {
-                    name = stripped.to_string();
-                }
+                let name = extension_base_name(&filename);
 
                 // Check if this extension is enabled in php.ini
-                let enabled = ini_content.lines().any(|line| {
-                    line.trim().starts_with("extension=")
-                        && (line.contains(&filename) || line.contains(&name))
-                });
+                let enabled = ini_content
+                    .lines()
+                    .any(|line| line_loads_extension(line, &filename));
 
                 let size = path.metadata().map(|m| m.len()).unwrap_or(0);
                 let size_str = if size >= 1_048_576 {
@@ -187,11 +219,14 @@ pub async fn toggle_php_extension(
         String::from("[PHP]\n")
     };
 
-    let ext_line = format!("extension={}", extension_name);
+    let ext_line = extension_ini_line(&extension_name);
 
     let new_content = if enabled {
         // Add the extension line if not already present
-        if !content.lines().any(|l| l.trim() == ext_line) {
+        if !content
+            .lines()
+            .any(|line| line_loads_extension(line, &extension_name))
+        {
             format!("{}\n{}", content.trim_end(), ext_line)
         } else {
             content
@@ -200,7 +235,7 @@ pub async fn toggle_php_extension(
         // Remove the extension line
         content
             .lines()
-            .filter(|l| l.trim() != ext_line)
+            .filter(|line| !line_loads_extension(line, &extension_name))
             .collect::<Vec<_>>()
             .join("\n")
     };
