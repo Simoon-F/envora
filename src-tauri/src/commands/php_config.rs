@@ -225,7 +225,6 @@ const POPULAR_PECL: &[(&str, &str)] = &[
     ("memcached", "Memcached client"),
     ("mongodb", "MongoDB driver"),
     ("swoole", "High-performance network framework"),
-    ("gd", "GD image library (may need system deps)"),
     ("sodium", "Sodium cryptography (often built-in now)"),
     ("apcu", "User cache"),
     ("yaml", "YAML parsing"),
