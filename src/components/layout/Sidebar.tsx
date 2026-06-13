@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Package, PackageCheck, Settings, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { OperationCenter } from './OperationCenter';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: '仪表盘' },
@@ -39,8 +40,11 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t text-xs text-muted-foreground">
+      <div className="border-t p-3">
+        <OperationCenter />
+      </div>
+
+      <div className="px-4 pb-4 text-xs text-muted-foreground">
         Envora v0.1.0
       </div>
     </aside>

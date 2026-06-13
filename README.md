@@ -24,7 +24,7 @@ at hand from a single friendly interface.
 - Create Nginx virtual hosts and manage related `/etc/hosts` entries.
 - Manage MySQL users and databases.
 - Install, update, configure, and run Composer commands.
-- Grow toward Node.js, Rust, Go, Java, npm, pnpm, yarn, and other toolchains.
+- Grow toward Node.js, Rust, Go, npm, pnpm, yarn, and other toolchains.
 - Switch between light, dark, and system themes.
 
 ## Why
@@ -57,8 +57,9 @@ reports are valuable.
 | PHP | Prebuilt packages for macOS via the `envora-runtime-packages` releases, official Windows archives |
 | Nginx | Source download and local build |
 | MySQL | Official MySQL Community Server archives |
+| Java | Eclipse Temurin JDKs via the Adoptium API, with `JAVA_HOME` support |
 | Composer | Envora-managed Composer plus system Composer detection |
-| Node.js, Rust, Go, Java | Planned |
+| Node.js, Rust, Go | Planned |
 | npm, pnpm, yarn | Planned |
 
 Runtime release packaging notes live in
@@ -144,7 +145,7 @@ pnpm tauri build
 │       ├── commands/     # Tauri command handlers
 │       ├── core/         # Platform helpers and shared errors
 │       ├── download/     # Download and extraction logic
-│       ├── runtime/      # PHP, Nginx, MySQL providers
+│       ├── runtime/      # PHP, Nginx, MySQL, Java providers
 │       ├── service/      # Service lifecycle management
 │       └── settings/     # App settings and paths
 └── docs/                 # Project documentation
@@ -180,7 +181,7 @@ so we can align on the direction.
 ## Roadmap
 
 - Improve cross-platform runtime and toolchain support.
-- Add Node.js, Rust, Go, Java, npm, pnpm, yarn, and related tooling.
+- Add Node.js, Rust, Go, npm, pnpm, yarn, and related tooling.
 - Add clearer release packaging and update flows.
 - Expand diagnostics for failed downloads, builds, and service starts.
 - Improve first-run onboarding.

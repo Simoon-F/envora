@@ -1,3 +1,4 @@
+use super::java::JavaProvider;
 use super::mysql::MysqlProvider;
 use super::nginx::NginxProvider;
 use super::php::PhpProvider;
@@ -19,6 +20,10 @@ pub fn create_provider(
             settings.bin_dir.clone(),
         )),
         RuntimeType::Mysql => Box::new(MysqlProvider::new(
+            settings.runtime_dir.clone(),
+            settings.bin_dir.clone(),
+        )),
+        RuntimeType::Java => Box::new(JavaProvider::new(
             settings.runtime_dir.clone(),
             settings.bin_dir.clone(),
         )),

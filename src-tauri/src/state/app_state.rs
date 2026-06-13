@@ -4,11 +4,14 @@ use tokio::sync::Mutex;
 
 use crate::settings::manager::SettingsManager;
 use crate::sidecar::manager::SidecarManager;
+use crate::state::operations::OperationManager;
 
 /// Application state shared across all Tauri commands
+#[derive(Clone)]
 pub struct AppState {
     pub settings: Arc<Mutex<SettingsManager>>,
     pub sidecar: Arc<Mutex<SidecarManager>>,
+    pub operations: Arc<Mutex<OperationManager>>,
     pub data_dir: PathBuf,
 }
 
@@ -30,10 +33,12 @@ impl AppState {
 
         let settings = SettingsManager::new(&config_dir);
         let sidecar = SidecarManager::new();
+        let operations = OperationManager::default();
 
         Self {
             settings: Arc::new(Mutex::new(settings)),
             sidecar: Arc::new(Mutex::new(sidecar)),
+            operations: Arc::new(Mutex::new(operations)),
             data_dir,
         }
     }

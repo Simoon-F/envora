@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, Download, Trash2, Check, Save, PackagePlus, Circle } from 'lucide-react';
-import { useInstalledVersions, useAvailableVersions, useDefaultVersion, useInstallVersion, useUninstallVersion, useSwitchDefault } from '@/hooks/useRuntimes';
+import { useInstalledVersions, useAvailableVersions, useDefaultVersion, useStartRuntimeInstall, useUninstallVersion, useSwitchDefault } from '@/hooks/useRuntimes';
+import { useOperationsStore } from '@/stores/operations';
 import type { RuntimeVersion, VersionInfo } from '@/types/runtime';
 import { tauriInvoke } from '@/lib/tauri';
 
@@ -16,34 +17,33 @@ interface PeclInfo { name: string; description: string; installed: boolean; }
 
 function VersionsTab() {
   const { data: installed, isLoading, mutate } = useInstalledVersions('php');
-  const { data: available } = useAvailableVersions('php');
-  const { data: defaultVersion } = useDefaultVersion('php');
-  const { mutate: installVersion, isLoading: isInstalling } = useInstallVersion();
+  const { data: available, mutate: mutateAvailable } = useAvailableVersions('php');
+  const { data: defaultVersion, mutate: mutateDefault } = useDefaultVersion('php');
+  const { mutate: startInstall } = useStartRuntimeInstall();
   const { mutate: uninstallVersion } = useUninstallVersion();
   const { mutate: switchDefault } = useSwitchDefault();
-  const [installProgress, setInstallProgress] = useState<number | null>(null);
-  const [installMessage, setInstallMessage] = useState('');
-  const [installingVer, setInstallingVer] = useState<string | null>(null);
+  const operations = useOperationsStore((state) => state.operations);
+  const upsertOperation = useOperationsStore((state) => state.upsert);
+  const phpOperations = Object.values(operations)
+    .filter((operation) => operation.kind === 'runtime_install' && operation.target.runtime === 'php')
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  const runningOperation = phpOperations.find((operation) => operation.status === 'running' || operation.status === 'queued');
+  const visibleOperation = runningOperation || phpOperations[0];
+  const isInstalling = Boolean(runningOperation);
+
+  const refresh = async () => {
+    await Promise.all([mutate(), mutateAvailable(), mutateDefault()]);
+  };
 
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    import('@tauri-apps/api/event').then(({ listen }) => {
-      listen<{ payload: { runtime: string; version: string; percent: number; message: string } }>(
-        'envora://progress', (event) => {
-          const p = event.payload.payload || event.payload;
-          if (p.runtime === 'php' && p.version === installingVer) {
-            setInstallProgress(p.percent); setInstallMessage(p.message);
-          }
-        }
-      ).then(fn => { unlisten = fn; });
-    });
-    return () => { unlisten?.(); };
-  }, [installingVer]);
+    if (visibleOperation?.status === 'completed') {
+      void refresh();
+    }
+  }, [visibleOperation?.id, visibleOperation?.status]);
 
   const handleInstall = async (version: string) => {
-    setInstallingVer(version); setInstallProgress(0);
-    try { await installVersion({ runtime: 'php', version }); mutate(); }
-    finally { setInstallingVer(null); setInstallProgress(null); }
+    const operation = await startInstall({ runtime: 'php', version });
+    upsertOperation(operation);
   };
 
   return (
@@ -69,10 +69,17 @@ function VersionsTab() {
               ))}
             </div>
           ) : <p className="text-sm text-muted-foreground">尚未安装任何版本。</p>}
-          {installProgress !== null && (
+          {visibleOperation && (
             <div className="space-y-1">
-              <div className="h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary transition-all duration-300" style={{ width: `${installProgress}%` }} /></div>
-              <p className="text-xs text-muted-foreground">{installMessage} ({installProgress.toFixed(0)}%)</p>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${visibleOperation.status === 'failed' ? 'bg-destructive' : 'bg-primary'}`}
+                  style={{ width: `${visibleOperation.percent}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                PHP {visibleOperation.target.version}：{visibleOperation.error || visibleOperation.message} ({visibleOperation.percent.toFixed(0)}%)
+              </p>
             </div>
           )}
           <div>

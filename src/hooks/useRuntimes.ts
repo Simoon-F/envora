@@ -1,6 +1,7 @@
 import { useTauriSwr } from './useSwr';
 import { useTauriMutation } from './useMutation';
 import type { RuntimeVersion, VersionInfo } from '@/types/runtime';
+import type { OperationInfo } from '@/stores/operations';
 
 export function useInstalledVersions(runtime: string) {
   return useTauriSwr<RuntimeVersion[]>(
@@ -26,6 +27,12 @@ export function useDefaultVersion(runtime: string) {
 export function useInstallVersion() {
   return useTauriMutation<void, { runtime: string; version: string }>(
     'install_version'
+  );
+}
+
+export function useStartRuntimeInstall() {
+  return useTauriMutation<OperationInfo, { runtime: string; version: string }>(
+    'start_runtime_install'
   );
 }
 

@@ -174,7 +174,11 @@ fn shell_env_script(data_dir: &str) -> String {
              \x20 $env:Path = \"$env:ENVORA_BIN;$env:Path\"\n\
              }}\n\
              $env:COMPOSER_HOME = Join-Path $env:ENVORA_HOME 'composer'\n\
-             $env:COMPOSER_CACHE_DIR = Join-Path $env:COMPOSER_HOME 'cache'\n"
+             $env:COMPOSER_CACHE_DIR = Join-Path $env:COMPOSER_HOME 'cache'\n\
+             $env:ENVORA_JAVA_HOME_FILE = Join-Path $env:ENVORA_HOME 'runtimes\\java\\default_home'\n\
+             if (Test-Path $env:ENVORA_JAVA_HOME_FILE) {{\n\
+             \x20 $env:JAVA_HOME = (Get-Content -Raw $env:ENVORA_JAVA_HOME_FILE).Trim()\n\
+             }}\n"
         );
     }
 
@@ -190,7 +194,11 @@ fn shell_env_script(data_dir: &str) -> String {
          \x20 *) export PATH=\"$ENVORA_BIN:$PATH\" ;;\n\
          esac\n\
          export COMPOSER_HOME=\"$ENVORA_HOME/composer\"\n\
-         export COMPOSER_CACHE_DIR=\"$ENVORA_HOME/composer/cache\"\n"
+         export COMPOSER_CACHE_DIR=\"$ENVORA_HOME/composer/cache\"\n\
+         export ENVORA_JAVA_HOME_FILE=\"$ENVORA_HOME/runtimes/java/default_home\"\n\
+         if [ -f \"$ENVORA_JAVA_HOME_FILE\" ]; then\n\
+         \x20 export JAVA_HOME=\"$(cat \"$ENVORA_JAVA_HOME_FILE\")\"\n\
+         fi\n"
         )
     }
 }
