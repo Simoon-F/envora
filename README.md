@@ -16,7 +16,8 @@ at hand from a single friendly interface.
 ## What Envora Does
 
 - Manage local runtimes, services, and developer toolchains from a desktop app.
-- Install supported runtime versions with progress feedback.
+- Install and switch supported runtime versions with clear progress and status
+  feedback.
 - Set default versions and expose runtime binaries to your shell.
 - Start, stop, restart, and inspect service status.
 - View and clear service logs.
@@ -42,7 +43,7 @@ environment easier to reason about.
 
 Envora is currently in early development.
 
-The app already contains working PHP, Nginx, MySQL, Composer, service,
+The app already contains working PHP, Nginx, MySQL, Java, Composer, service,
 configuration, virtual host, and settings screens, but the project is not yet a
 polished stable release. Some features may be macOS-first, platform support is
 still being refined, and release packaging is evolving.
@@ -147,6 +148,7 @@ pnpm tauri build
 │       ├── download/     # Download and extraction logic
 │       ├── runtime/      # PHP, Nginx, MySQL, Java providers
 │       ├── service/      # Service lifecycle management
+│       ├── state/        # App state and background operation tracking
 │       └── settings/     # App settings and paths
 └── docs/                 # Project documentation
 ```
@@ -172,6 +174,7 @@ so we can align on the direction.
 
 - Keep runtime behavior explicit. Envora should make local state easier to see,
   not harder.
+- Keep long-running operations visible and understandable across navigation.
 - Prefer editable config files over opaque generated state.
 - Keep platform differences visible in the Rust layer.
 - Avoid broad rewrites while the app is stabilizing.
