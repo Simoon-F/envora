@@ -12,6 +12,7 @@ pub enum RuntimeType {
     Nginx,
     Mysql,
     Java,
+    Node,
 }
 
 impl RuntimeType {
@@ -21,6 +22,7 @@ impl RuntimeType {
             RuntimeType::Nginx => "nginx",
             RuntimeType::Mysql => "mysql",
             RuntimeType::Java => "java",
+            RuntimeType::Node => "node",
         }
     }
 
@@ -30,6 +32,7 @@ impl RuntimeType {
             "nginx" => Some(RuntimeType::Nginx),
             "mysql" => Some(RuntimeType::Mysql),
             "java" => Some(RuntimeType::Java),
+            "node" | "nodejs" => Some(RuntimeType::Node),
             _ => None,
         }
     }

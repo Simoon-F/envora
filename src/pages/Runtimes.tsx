@@ -6,12 +6,14 @@ import { PHPDetail } from '@/components/runtime/PHPDetail';
 import { MySQLDetail } from '@/components/runtime/MySQLDetail';
 import { NginxDetail } from '@/components/runtime/NginxDetail';
 import { JavaDetail } from '@/components/runtime/JavaDetail';
+import { NodeDetail } from '@/components/runtime/NodeDetail';
 
 const runtimes: { type: RuntimeType; name: string; icon: string }[] = [
   { type: 'php', name: 'PHP', icon: '🐘' },
   { type: 'nginx', name: 'Nginx', icon: '🌐' },
   { type: 'mysql', name: 'MySQL', icon: '🐬' },
   { type: 'java', name: 'Java', icon: '☕' },
+  { type: 'node', name: 'Node.js', icon: '⬢' },
 ];
 
 // ── Sidebar Item ───────────────────────────────────────────────────
@@ -42,10 +44,12 @@ export function Runtimes() {
   const { data: installedNginx } = useInstalledVersions('nginx');
   const { data: installedMysql } = useInstalledVersions('mysql');
   const { data: installedJava } = useInstalledVersions('java');
+  const { data: installedNode } = useInstalledVersions('node');
   const { data: phpVer } = useDefaultVersion('php');
   const { data: nginxVer } = useDefaultVersion('nginx');
   const { data: mysqlVer } = useDefaultVersion('mysql');
   const { data: javaVer } = useDefaultVersion('java');
+  const { data: nodeVer } = useDefaultVersion('node');
 
   const getVersion = (type: RuntimeType): string => {
     const installed =
@@ -55,7 +59,9 @@ export function Runtimes() {
           ? installedNginx
           : type === 'mysql'
             ? installedMysql
-            : installedJava;
+            : type === 'java'
+              ? installedJava
+              : installedNode;
     const def =
       type === 'php'
         ? phpVer
@@ -63,7 +69,9 @@ export function Runtimes() {
           ? nginxVer
           : type === 'mysql'
             ? mysqlVer
-            : javaVer;
+            : type === 'java'
+              ? javaVer
+              : nodeVer;
     return def || installed?.[0]?.version || '';
   };
 
@@ -76,6 +84,7 @@ export function Runtimes() {
       case 'nginx': return <NginxDetail key={version} version={version || 'latest'} />;
       case 'mysql': return <MySQLDetail key={version} version={version || 'latest'} />;
       case 'java': return <JavaDetail key={version} version={version || 'latest'} />;
+      case 'node': return <NodeDetail key={version} version={version || 'latest'} />;
     }
   };
 

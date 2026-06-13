@@ -1,6 +1,7 @@
 use super::java::JavaProvider;
 use super::mysql::MysqlProvider;
 use super::nginx::NginxProvider;
+use super::node::NodeProvider;
 use super::php::PhpProvider;
 use super::provider::{RuntimeProvider, RuntimeType};
 use crate::settings::manager::AppSettings;
@@ -24,6 +25,10 @@ pub fn create_provider(
             settings.bin_dir.clone(),
         )),
         RuntimeType::Java => Box::new(JavaProvider::new(
+            settings.runtime_dir.clone(),
+            settings.bin_dir.clone(),
+        )),
+        RuntimeType::Node => Box::new(NodeProvider::new(
             settings.runtime_dir.clone(),
             settings.bin_dir.clone(),
         )),

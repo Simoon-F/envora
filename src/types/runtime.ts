@@ -1,4 +1,4 @@
-export type RuntimeType = 'php' | 'nginx' | 'mysql' | 'java';
+export type RuntimeType = 'php' | 'nginx' | 'mysql' | 'java' | 'node';
 
 export interface VersionInfo {
   version: string;
