@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Activity, CheckCircle2, ListChecks, Loader2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -83,9 +84,15 @@ function OperationRow({ operation }: { operation: OperationInfo }) {
 }
 
 export function OperationCenter() {
-  const operations = useOperationsStore((state) => Object.values(state.operations));
-  const ordered = operations.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-  const running = ordered.filter((operation) => operation.status === 'running' || operation.status === 'queued');
+  const operationsById = useOperationsStore((state) => state.operations);
+  const ordered = useMemo(
+    () => Object.values(operationsById).sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+    [operationsById]
+  );
+  const running = useMemo(
+    () => ordered.filter((operation) => operation.status === 'running' || operation.status === 'queued'),
+    [ordered]
+  );
   const latest = running[0] || ordered[0];
 
   return (
