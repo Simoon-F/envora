@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
-import { JavaDetail } from '@/components/runtime/JavaDetail';
-import { useDefaultVersion, useInstalledVersions } from '@/hooks/useRuntimes';
+import { JavaDetail } from '@/components/runtime/java-detail';
+import { useDefaultVersion, useInstalledVersions } from '@/hooks/use-runtimes';
 
 export function JavaRuntime() {
   const { data: installed } = useInstalledVersions('java');

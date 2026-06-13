@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, Download, Trash2, Check, Save, PackagePlus, Circle } from 'lucide-react';
-import { useInstalledVersions, useAvailableVersions, useDefaultVersion, useInstallVersion, useUninstallVersion, useSwitchDefault } from '@/hooks/useRuntimes';
+import { useInstalledVersions, useAvailableVersions, useDefaultVersion, useInstallVersion, useUninstallVersion, useSwitchDefault } from '@/hooks/use-runtimes';
 import type { RuntimeVersion, VersionInfo } from '@/types/runtime';
 import { tauriInvoke } from '@/lib/tauri';
 

@@ -11,14 +11,14 @@ import {
   useStartRuntimeInstall,
   useSwitchDefault,
   useUninstallVersion,
-} from '@/hooks/useRuntimes';
+} from '@/hooks/use-runtimes';
 import { useOperationsStore } from '@/stores/operations';
 import type { RuntimeVersion, VersionInfo } from '@/types/runtime';
 
-function NodeVersionsTab() {
-  const { data: installed, isLoading, mutate } = useInstalledVersions('node');
-  const { data: available, mutate: mutateAvailable } = useAvailableVersions('node');
-  const { data: defaultVersion, mutate: mutateDefault } = useDefaultVersion('node');
+function JavaVersionsTab() {
+  const { data: installed, isLoading, mutate } = useInstalledVersions('java');
+  const { data: available, mutate: mutateAvailable } = useAvailableVersions('java');
+  const { data: defaultVersion, mutate: mutateDefault } = useDefaultVersion('java');
   const { mutate: startInstall } = useStartRuntimeInstall();
   const { mutate: uninstallVersion } = useUninstallVersion();
   const { mutate: switchDefault } = useSwitchDefault();
@@ -27,11 +27,11 @@ function NodeVersionsTab() {
   const removeOperation = useOperationsStore((state) => state.remove);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const nodeOperations = Object.values(operations)
-    .filter((operation) => operation.kind === 'runtime_install' && operation.target.runtime === 'node')
+  const javaOperations = Object.values(operations)
+    .filter((operation) => operation.kind === 'runtime_install' && operation.target.runtime === 'java')
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-  const runningOperation = nodeOperations.find((operation) => operation.status === 'running' || operation.status === 'queued');
-  const visibleOperation = runningOperation || nodeOperations[0];
+  const runningOperation = javaOperations.find((operation) => operation.status === 'running' || operation.status === 'queued');
+  const visibleOperation = runningOperation || javaOperations[0];
   const isInstalling = Boolean(runningOperation);
 
   const refresh = async () => {
@@ -41,7 +41,7 @@ function NodeVersionsTab() {
   const handleInstall = async (version: string) => {
     setActionError(null);
     try {
-      const operation = await startInstall({ runtime: 'node', version });
+      const operation = await startInstall({ runtime: 'java', version });
       upsertOperation(operation);
     } catch (e) {
       setActionError(String(e));
@@ -51,7 +51,7 @@ function NodeVersionsTab() {
   const handleUninstall = async (version: string) => {
     setActionError(null);
     try {
-      await uninstallVersion({ runtime: 'node', version });
+      await uninstallVersion({ runtime: 'java', version });
       await refresh();
     } catch (e) {
       setActionError(String(e));
@@ -61,7 +61,7 @@ function NodeVersionsTab() {
   const handleSwitchDefault = async (version: string) => {
     setActionError(null);
     try {
-      await switchDefault({ runtime: 'node', version });
+      await switchDefault({ runtime: 'java', version });
       await refresh();
     } catch (e) {
       setActionError(String(e));
@@ -93,7 +93,7 @@ function NodeVersionsTab() {
           {installed.map((v: RuntimeVersion) => (
             <div key={v.version} className="flex items-center justify-between rounded-md border p-3">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-sm">Node.js {v.version}</span>
+                <span className="font-mono text-sm">JDK {v.version}</span>
                 {v.version === defaultVersion && (
                   <Badge>
                     <Check className="mr-1 h-3 w-3" />
@@ -116,7 +116,7 @@ function NodeVersionsTab() {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">尚未安装任何 Node.js 版本。</p>
+        <p className="text-sm text-muted-foreground">尚未安装任何 Java 版本。</p>
       )}
 
       {visibleOperation && (
@@ -131,7 +131,7 @@ function NodeVersionsTab() {
           </div>
           <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
             <span>
-              Node.js {visibleOperation.target.version}：{visibleOperation.error || visibleOperation.message} ({visibleOperation.percent.toFixed(0)}%)
+              JDK {visibleOperation.target.version}：{visibleOperation.error || visibleOperation.message} ({visibleOperation.percent.toFixed(0)}%)
             </span>
             {visibleOperation.status !== 'running' && visibleOperation.status !== 'queued' && (
               <button
@@ -157,7 +157,7 @@ function NodeVersionsTab() {
               disabled={isInstalling}
               onClick={() => handleInstall(v.version)}
             >
-              <span className="font-mono text-sm">Node.js {v.version}</span>
+              <span className="font-mono text-sm">JDK {v.version}</span>
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-md">
                 {runningOperation?.target.version === v.version ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -168,7 +168,7 @@ function NodeVersionsTab() {
             </button>
           ))}
           {installable.length === 0 && (
-            <p className="text-sm text-muted-foreground">当前可用版本都已安装，或当前平台暂无可用包。</p>
+            <p className="text-sm text-muted-foreground">当前可用版本都已安装。</p>
           )}
         </div>
       </div>
@@ -176,8 +176,8 @@ function NodeVersionsTab() {
   );
 }
 
-function NodeShellInfo({ version }: { version: string }) {
-  const nodeHome = `~/.envora/runtimes/node/${version || '{version}'}`;
+function JavaShellInfo({ version }: { version: string }) {
+  const javaHome = `~/.envora/runtimes/java/${version || '{version}'}`;
 
   return (
     <div className="space-y-3 text-sm">
@@ -188,10 +188,10 @@ function NodeShellInfo({ version }: { version: string }) {
         </div>
         <div className="space-y-1 text-muted-foreground">
           <div>
-            <code>node</code>、<code>npm</code>、<code>npx</code>、<code>corepack</code> 会链接到 Envora 的 bin 目录。
+            <code>java</code>、<code>javac</code>、<code>jar</code> 等命令会链接到 Envora 的 bin 目录。
           </div>
           <div>
-            当前默认安装目录：<code>{nodeHome}</code>
+            默认版本会写入 <code>JAVA_HOME</code>：<code>{javaHome}</code>
           </div>
         </div>
       </div>
@@ -199,7 +199,7 @@ function NodeShellInfo({ version }: { version: string }) {
   );
 }
 
-export function NodeDetail({ version }: { version: string }) {
+export function JavaDetail({ version }: { version: string }) {
   const [activeTab, setActiveTab] = useState('versions');
 
   return (
@@ -214,17 +214,17 @@ export function NodeDetail({ version }: { version: string }) {
             <CardTitle className="text-base">版本</CardTitle>
           </CardHeader>
           <CardContent>
-            <NodeVersionsTab />
+            <JavaVersionsTab />
           </CardContent>
         </Card>
       </TabsContent>
       <TabsContent value="shell" className="mt-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Node.js 环境</CardTitle>
+            <CardTitle className="text-base">Java 环境</CardTitle>
           </CardHeader>
           <CardContent>
-            <NodeShellInfo version={version} />
+            <JavaShellInfo version={version} />
           </CardContent>
         </Card>
       </TabsContent>

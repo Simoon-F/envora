@@ -1,5 +1,5 @@
-import { useTauriSwr } from './useSwr';
-import { useTauriMutation } from './useMutation';
+import { useTauriSwr } from './use-swr';
+import { useTauriMutation } from './use-mutation';
 import type { RuntimeVersion, VersionInfo } from '@/types/runtime';
 import type { OperationInfo } from '@/stores/operations';
 

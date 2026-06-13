@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useDefaultVersion, useInstalledVersions } from '@/hooks/useRuntimes';
+import { useDefaultVersion, useInstalledVersions } from '@/hooks/use-runtimes';
 import { tauriInvoke } from '@/lib/tauri';
 import { listen } from '@tauri-apps/api/event';
 import {

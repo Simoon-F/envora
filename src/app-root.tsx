@@ -1,15 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { SidebarLayout } from '@/components/layout/SidebarLayout';
-import { Dashboard } from '@/pages/Dashboard';
-import { Runtimes } from '@/pages/Runtimes';
-import { PhpRuntime } from '@/pages/PhpRuntime';
-import { MysqlRuntime } from '@/pages/MysqlRuntime';
-import { NginxRuntime } from '@/pages/NginxRuntime';
-import { JavaRuntime } from '@/pages/JavaRuntime';
-import { NodeRuntime } from '@/pages/NodeRuntime';
-import { Composer } from '@/pages/Composer';
-import { Settings } from '@/pages/Settings';
-import { OperationEvents } from '@/components/runtime/OperationEvents';
+import { SidebarLayout } from '@/components/layout/sidebar-layout';
+import { Dashboard } from '@/pages/dashboard-page';
+import { Runtimes } from '@/pages/runtimes-page';
+import { PhpRuntime } from '@/pages/php-runtime';
+import { MysqlRuntime } from '@/pages/mysql-runtime';
+import { NginxRuntime } from '@/pages/nginx-runtime';
+import { JavaRuntime } from '@/pages/java-runtime';
+import { NodeRuntime } from '@/pages/node-runtime';
+import { Composer } from '@/pages/composer-page';
+import { Settings } from '@/pages/settings-page';
+import { OperationEvents } from '@/components/runtime/operation-events';
 
 function App() {
   return (

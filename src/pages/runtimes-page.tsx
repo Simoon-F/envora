@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { useInstalledVersions, useDefaultVersion } from '@/hooks/useRuntimes';
+import { useInstalledVersions, useDefaultVersion } from '@/hooks/use-runtimes';
 import type { RuntimeType } from '@/types/runtime';
-import { PHPDetail } from '@/components/runtime/PHPDetail';
-import { MySQLDetail } from '@/components/runtime/MySQLDetail';
-import { NginxDetail } from '@/components/runtime/NginxDetail';
-import { JavaDetail } from '@/components/runtime/JavaDetail';
-import { NodeDetail } from '@/components/runtime/NodeDetail';
+import { PHPDetail } from '@/components/runtime/php-detail';
+import { MySQLDetail } from '@/components/runtime/mysql-detail';
+import { NginxDetail } from '@/components/runtime/nginx-detail';
+import { JavaDetail } from '@/components/runtime/java-detail';
+import { NodeDetail } from '@/components/runtime/node-detail';
 
 const runtimes: { type: RuntimeType; name: string; icon: string }[] = [
   { type: 'php', name: 'PHP', icon: '🐘' },

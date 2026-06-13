@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
-import { NodeDetail } from '@/components/runtime/NodeDetail';
-import { useDefaultVersion, useInstalledVersions } from '@/hooks/useRuntimes';
+import { NodeDetail } from '@/components/runtime/node-detail';
+import { useDefaultVersion, useInstalledVersions } from '@/hooks/use-runtimes';
 
 export function NodeRuntime() {
   const { data: installed } = useInstalledVersions('node');

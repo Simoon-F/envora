@@ -4,8 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Play, Square, RotateCw, Loader2, PowerOff, Power, FileText, Trash2 } from 'lucide-react';
-import { useAllServices, useStartService, useStopService, useRestartService, useStartAllServices, useStopAllServices, useServiceLog, useClearServiceLog } from '@/hooks/useServices';
-import { useDefaultVersion } from '@/hooks/useRuntimes';
+import { useAllServices, useStartService, useStopService, useRestartService, useStartAllServices, useStopAllServices, useServiceLog, useClearServiceLog } from '@/hooks/use-services';
+import { useDefaultVersion } from '@/hooks/use-runtimes';
 import type { ServiceStatus } from '@/types/service';
 import { listen } from '@tauri-apps/api/event';
 

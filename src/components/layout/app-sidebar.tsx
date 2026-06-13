@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Package, PackageCheck, Settings, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { OperationCenter } from './OperationCenter';
+import { OperationCenter } from './operation-center';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: '仪表盘' },
