@@ -1,0 +1,263 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version, for example 0.2.0 or 0.2.0-beta.1
+        required: true
+        type: string
+      draft:
+        description: Create the GitHub release as a draft
+        required: true
+        default: true
+        type: boolean
+      prerelease:
+        description: Mark the GitHub release as a prerelease
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release-version.outputs.version }}
+      tag: ${{ steps.release-version.outputs.tag }}
+      sha: ${{ steps.commit.outputs.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release branch
+        if: github.ref_type != 'branch'
+        run: |
+          echo "Release workflow must be run from a branch, not ${GITHUB_REF}."
+          exit 1
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Normalize and validate version
+        id: release-version
+        shell: bash
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Version must be valid SemVer, for example 0.2.0 or 0.2.0-beta.1."
+            exit 1
+          fi
+
+          TAG="v${VERSION}"
+
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "Tag ${TAG} already exists."
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Update version files
+        env:
+          RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const version = process.env.RELEASE_VERSION;
+
+          function updateJson(path, updater) {
+            const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+            updater(data);
+            fs.writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+          }
+
+          updateJson('package.json', (data) => {
+            data.version = version;
+          });
+
+          updateJson('src-tauri/tauri.conf.json', (data) => {
+            data.version = version;
+          });
+
+          const cargoPath = 'src-tauri/Cargo.toml';
+          const cargo = fs.readFileSync(cargoPath, 'utf8').split(/\r?\n/);
+          let inPackage = false;
+          const nextCargo = cargo.map((line) => {
+            if (/^\[package\]\s*$/.test(line)) {
+              inPackage = true;
+              return line;
+            }
+
+            if (/^\[/.test(line)) {
+              inPackage = false;
+            }
+
+            if (inPackage && /^version\s*=/.test(line)) {
+              return `version = "${version}"`;
+            }
+
+            return line;
+          });
+
+          fs.writeFileSync(cargoPath, nextCargo.join('\n'));
+          NODE
+
+          cargo metadata --manifest-path src-tauri/Cargo.toml --format-version 1 >/dev/null
+
+      - name: Verify synchronized versions
+        env:
+          RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const expected = process.env.RELEASE_VERSION;
+          const packageVersion = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
+          const tauriVersion = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')).version;
+          const cargoToml = fs.readFileSync('src-tauri/Cargo.toml', 'utf8');
+          const cargoVersion = cargoToml.match(/^\[package\][\s\S]*?^version\s*=\s*"([^"]+)"/m)?.[1];
+          const cargoLock = fs.readFileSync('src-tauri/Cargo.lock', 'utf8');
+          const lockVersion = cargoLock.match(/^name = "envora"\nversion = "([^"]+)"/m)?.[1];
+
+          const versions = {
+            'package.json': packageVersion,
+            'src-tauri/tauri.conf.json': tauriVersion,
+            'src-tauri/Cargo.toml': cargoVersion,
+            'src-tauri/Cargo.lock': lockVersion,
+          };
+
+          for (const [file, version] of Object.entries(versions)) {
+            if (version !== expected) {
+              console.error(`${file} is ${version}, expected ${expected}`);
+              process.exit(1);
+            }
+          }
+          NODE
+
+      - name: Commit version bump
+        id: commit
+        env:
+          RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
+        run: |
+          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
+
+          if git diff --cached --quiet; then
+            echo "No version changes to commit."
+          else
+            git commit -m "chore: release v${RELEASE_VERSION}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create tag
+        env:
+          RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
+        run: |
+          git tag -a "$RELEASE_TAG" -m "Envora $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
+      - name: Create GitHub release with generated notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
+          RELEASE_SHA: ${{ steps.commit.outputs.sha }}
+        shell: bash
+        run: |
+          args=(
+            "$RELEASE_TAG"
+            --title "Envora $RELEASE_TAG"
+            --target "$RELEASE_SHA"
+            --generate-notes
+          )
+
+          if [[ "${{ inputs.draft }}" == "true" ]]; then
+            args+=(--draft)
+          fi
+
+          if [[ "${{ inputs.prerelease }}" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+
+          gh release create "${args[@]}"
+
+  publish:
+    name: Build ${{ matrix.name }}
+    needs: prepare
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS Apple Silicon
+            platform: macos-latest
+            args: --target aarch64-apple-darwin
+          - name: macOS Intel
+            platform: macos-latest
+            args: --target x86_64-apple-darwin
+          - name: Windows x64
+            platform: windows-latest
+            args: ""
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and upload release assets
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: Envora ${{ needs.prepare.outputs.tag }}
+          releaseDraft: ${{ inputs.draft }}
+          prerelease: ${{ inputs.prerelease }}
+          args: ${{ matrix.args }}
