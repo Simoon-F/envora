@@ -208,7 +208,8 @@ impl SidecarManager {
         #[cfg(target_os = "windows")]
         {
             // On Windows, we use taskkill
-            let mut args = vec!["/PID", &pid.to_string()];
+            let pid_arg = pid.to_string();
+            let mut args = vec!["/PID", pid_arg.as_str()];
             if force {
                 args.push("/F");
             }
