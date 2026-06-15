@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
-#[cfg(unix)]
+#[cfg(any(unix, target_os = "windows"))]
 use std::process::Command;
 
 use tauri::State;
@@ -53,7 +53,7 @@ fn php_fastcgi_config(runtime_dir: &Path, logs_dir: &Path, version: &str) -> Sid
         env_vars.insert("PHP_FCGI_MAX_REQUESTS".to_string(), "1000".to_string());
 
         return SidecarConfig {
-            id: format!("php-cgi-{}", version),
+            id: format!("php-fpm-{}", version),
             name: "PHP FastCGI".to_string(),
             binary_path: install_dir.join("php-cgi.exe"),
             args: vec!["-b".to_string(), "127.0.0.1:9000".to_string()],
@@ -181,10 +181,13 @@ pub async fn start_service(
                 3306u16,
             )
         }
-        "php-fpm" => (
-            php_fastcgi_config(&runtime_dir, &state.logs_dir(), &version),
-            9000u16,
-        ),
+        "php-fpm" => {
+            sanitize_php_ini_for_runtime(&runtime_dir, &version)?;
+            (
+                php_fastcgi_config(&runtime_dir, &state.logs_dir(), &version),
+                9000u16,
+            )
+        }
         _ => return Err(AppError::ServiceNotFound(service_type)),
     };
 
@@ -401,7 +404,10 @@ fn build_service_config(
             ))
         }
         "php-fpm" => Ok((
-            php_fastcgi_config(&runtime_dir, &logs_dir, version),
+            {
+                sanitize_php_ini_for_runtime(runtime_dir, version)?;
+                php_fastcgi_config(&runtime_dir, &logs_dir, version)
+            },
             9000u16,
         )),
         _ => Err(AppError::ServiceNotFound(service_type.to_string())),
@@ -523,6 +529,39 @@ fn read_log_tail(path: &Path, max_bytes: u64) -> std::io::Result<String> {
     Ok(String::from_utf8_lossy(&buf).into_owned())
 }
 
+fn sanitize_php_ini_for_runtime(runtime_dir: &Path, version: &str) -> Result<(), AppError> {
+    let php_ini = if cfg!(target_os = "windows") {
+        runtime_dir.join("php").join(version).join("php.ini")
+    } else {
+        runtime_dir
+            .join("php")
+            .join(version)
+            .join("lib")
+            .join("php.ini")
+    };
+
+    if !php_ini.exists() {
+        return Ok(());
+    }
+
+    let content = std::fs::read_to_string(&php_ini)?;
+    let filtered = content
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim_start();
+            !trimmed.starts_with("session.sid_length")
+                && !trimmed.starts_with("session.sid_bits_per_character")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    if filtered != content {
+        std::fs::write(&php_ini, format!("{}\n", filtered.trim_end()))?;
+    }
+
+    Ok(())
+}
+
 fn ensure_port_available(service_type: &str, port: u16) -> Result<(), AppError> {
     if try_bind_service_port(service_type, port)?.is_none() {
         return Ok(());
@@ -578,9 +617,6 @@ fn service_display_name(service_type: &str) -> &str {
 }
 
 fn port_owner_hint(port: u16) -> String {
-    #[cfg(not(unix))]
-    let _ = port;
-
     #[cfg(unix)]
     {
         match Command::new("lsof")
@@ -599,8 +635,81 @@ fn port_owner_hint(port: u16) -> String {
         }
     }
 
-    #[cfg(not(unix))]
+    #[cfg(target_os = "windows")]
     {
+        let pids = windows_listener_pids(port);
+        if pids.is_empty() {
+            return "请先停止占用该端口的进程后再启动。".to_string();
+        }
+
+        let details = pids
+            .into_iter()
+            .map(|pid| match windows_process_name(pid) {
+                Some(name) => format!("PID {} ({})", pid, name),
+                None => format!("PID {}", pid),
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        format!("当前监听进程：\n{}", details)
+    }
+
+    #[cfg(not(any(unix, target_os = "windows")))]
+    {
+        let _ = port;
         "请先停止占用该端口的进程后再启动。".to_string()
     }
+}
+
+#[cfg(target_os = "windows")]
+fn windows_listener_pids(port: u16) -> Vec<u32> {
+    let output = Command::new("netstat").args(["-ano", "-p", "tcp"]).output();
+    let stdout = match output {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).to_string()
+        }
+        _ => return Vec::new(),
+    };
+    let port_suffix = format!(":{}", port);
+
+    stdout
+        .lines()
+        .filter_map(|line| {
+            let parts = line.split_whitespace().collect::<Vec<_>>();
+            if parts.len() < 5 || parts[0] != "TCP" {
+                return None;
+            }
+
+            let local_addr = parts[1];
+            let state = parts[3];
+            let pid = parts[4];
+
+            if local_addr.ends_with(&port_suffix) && state.eq_ignore_ascii_case("LISTENING") {
+                pid.parse::<u32>().ok()
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+#[cfg(target_os = "windows")]
+fn windows_process_name(pid: u32) -> Option<String> {
+    let output = Command::new("tasklist")
+        .args(["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let line = stdout
+        .lines()
+        .find(|line| line.contains(&pid.to_string()))?;
+    line.split(',')
+        .next()
+        .map(|name| name.trim_matches('"').to_string())
+        .filter(|name| !name.is_empty())
 }

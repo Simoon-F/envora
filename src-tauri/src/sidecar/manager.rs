@@ -394,9 +394,6 @@ pub fn cleanup_envora_runtime_processes(data_dir: &Path) {
 
 /// Stop orphaned same-service listeners that can remain after a daemonized process lost its master.
 pub fn cleanup_service_port_listeners(service_type: &str, port: u16) {
-    #[cfg(not(unix))]
-    let _ = (service_type, port);
-
     #[cfg(unix)]
     {
         let output = match std::process::Command::new("lsof")
@@ -434,6 +431,120 @@ pub fn cleanup_service_port_listeners(service_type: &str, port: u16) {
                 send_signal(pid, true);
             }
         }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let expected_process = match service_type {
+            "nginx" => "nginx.exe",
+            "php-fpm" => "php-cgi.exe",
+            "mysql" => "mysqld.exe",
+            _ => return,
+        };
+
+        let pids = windows_same_service_listener_pids(port, expected_process);
+        for pid in &pids {
+            stop_windows_process(*pid, false);
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(500));
+
+        for pid in pids {
+            if is_process_alive(pid) {
+                stop_windows_process(pid, true);
+            }
+        }
+    }
+
+    #[cfg(not(any(unix, target_os = "windows")))]
+    {
+        let _ = (service_type, port);
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn windows_same_service_listener_pids(port: u16, expected_process: &str) -> Vec<u32> {
+    windows_listener_pids(port)
+        .into_iter()
+        .filter(|pid| {
+            windows_process_name(*pid)
+                .map(|name| name.eq_ignore_ascii_case(expected_process))
+                .unwrap_or(false)
+        })
+        .collect()
+}
+
+#[cfg(target_os = "windows")]
+fn windows_listener_pids(port: u16) -> Vec<u32> {
+    let output = std::process::Command::new("netstat")
+        .args(["-ano", "-p", "tcp"])
+        .output();
+    let stdout = match output {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).to_string()
+        }
+        _ => return Vec::new(),
+    };
+    let port_suffix = format!(":{}", port);
+
+    stdout
+        .lines()
+        .filter_map(|line| {
+            let parts = line.split_whitespace().collect::<Vec<_>>();
+            if parts.len() < 5 || parts[0] != "TCP" {
+                return None;
+            }
+
+            let local_addr = parts[1];
+            let state = parts[3];
+            let pid = parts[4];
+
+            if local_addr.ends_with(&port_suffix) && state.eq_ignore_ascii_case("LISTENING") {
+                pid.parse::<u32>().ok()
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+#[cfg(target_os = "windows")]
+fn windows_process_name(pid: u32) -> Option<String> {
+    let output = std::process::Command::new("tasklist")
+        .args(["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let line = stdout
+        .lines()
+        .find(|line| line.contains(&pid.to_string()))?;
+    line.split(',')
+        .next()
+        .map(|name| name.trim_matches('"').to_string())
+        .filter(|name| !name.is_empty())
+}
+
+#[cfg(target_os = "windows")]
+fn stop_windows_process(pid: u32, force: bool) {
+    let pid_arg = pid.to_string();
+    let mut args = vec!["/PID", pid_arg.as_str()];
+    if force {
+        args.push("/F");
+    }
+
+    match std::process::Command::new("taskkill").args(&args).output() {
+        Ok(output) if output.status.success() => {}
+        Ok(output) => tracing::warn!(
+            "Failed to stop Windows process {}: {}",
+            pid,
+            String::from_utf8_lossy(&output.stderr)
+        ),
+        Err(error) => tracing::warn!("Failed to stop Windows process {}: {}", pid, error),
     }
 }
 
