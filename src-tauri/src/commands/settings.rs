@@ -60,13 +60,8 @@ pub async fn get_shell_environment_status(
         let settings = state.settings.lock().await;
         settings.get().clone()
     };
-    let profile = shell_profile_path()?;
-    let profile_installed = profile
-        .exists()
-        .then(|| std::fs::read_to_string(&profile).ok())
-        .flatten()
-        .map(|content| content.contains(ENVORA_PROFILE_BEGIN))
-        .unwrap_or(false);
+    let profiles = shell_profile_paths()?;
+    let profile_installed = profiles.iter().any(profile_contains_envora_block);
     let user_path_installed = user_path_contains_bin_dir(&settings.bin_dir)?;
     let is_installed = if cfg!(windows) {
         profile_installed && user_path_installed
@@ -77,7 +72,11 @@ pub async fn get_shell_environment_status(
     Ok(ShellEnvironmentStatus {
         bin_dir: settings.bin_dir.display().to_string(),
         env_script: env_script_path(&settings).display().to_string(),
-        shell_profile: profile.display().to_string(),
+        shell_profile: profiles
+            .iter()
+            .map(|profile| profile.display().to_string())
+            .collect::<Vec<_>>()
+            .join("; "),
         profile_installed,
         user_path_installed,
         is_installed,
@@ -119,19 +118,20 @@ pub(crate) async fn ensure_shell_environment(state: &AppState) -> Result<(), App
     #[cfg(windows)]
     install_windows_user_path(&bin_dir)?;
 
-    let profile = shell_profile_path()?;
-    if let Some(parent) = profile.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-
     let source_block = profile_source_block(&env_script.display().to_string());
-    let current = if profile.exists() {
-        std::fs::read_to_string(&profile)?
-    } else {
-        String::new()
-    };
-    let next = replace_or_append_profile_block(&current, &source_block);
-    std::fs::write(&profile, next)?;
+    for profile in shell_profile_paths()? {
+        if let Some(parent) = profile.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let current = if profile.exists() {
+            std::fs::read_to_string(&profile)?
+        } else {
+            String::new()
+        };
+        let next = replace_or_append_profile_block(&current, &source_block);
+        std::fs::write(&profile, next)?;
+    }
 
     Ok(())
 }
@@ -148,29 +148,44 @@ fn env_script_path(settings: &AppSettings) -> std::path::PathBuf {
     }
 }
 
-fn shell_profile_path() -> Result<std::path::PathBuf, AppError> {
+fn shell_profile_paths() -> Result<Vec<std::path::PathBuf>, AppError> {
     let home = dirs::home_dir()
         .ok_or_else(|| AppError::Config("Unable to locate home directory".to_string()))?;
 
     #[cfg(windows)]
     {
-        Ok(home
-            .join("Documents")
-            .join("PowerShell")
-            .join("Microsoft.PowerShell_profile.ps1"))
+        let powershell_dir = home.join("Documents").join("PowerShell");
+        let windows_powershell_dir = home.join("Documents").join("WindowsPowerShell");
+        Ok(vec![
+            powershell_dir.join("Microsoft.PowerShell_profile.ps1"),
+            powershell_dir.join("Microsoft.VSCode_profile.ps1"),
+            powershell_dir.join("profile.ps1"),
+            windows_powershell_dir.join("Microsoft.PowerShell_profile.ps1"),
+            windows_powershell_dir.join("Microsoft.VSCode_profile.ps1"),
+            windows_powershell_dir.join("profile.ps1"),
+        ])
     }
 
     #[cfg(not(windows))]
     {
         let shell = std::env::var("SHELL").unwrap_or_default();
         if shell.ends_with("bash") {
-            Ok(home.join(".bashrc"))
+            Ok(vec![home.join(".bashrc")])
         } else if shell.ends_with("fish") {
-            Ok(home.join(".config").join("fish").join("config.fish"))
+            Ok(vec![home.join(".config").join("fish").join("config.fish")])
         } else {
-            Ok(home.join(".zshrc"))
+            Ok(vec![home.join(".zshrc")])
         }
     }
+}
+
+fn profile_contains_envora_block(profile: &std::path::PathBuf) -> bool {
+    profile
+        .exists()
+        .then(|| std::fs::read_to_string(profile).ok())
+        .flatten()
+        .map(|content| content.contains(ENVORA_PROFILE_BEGIN))
+        .unwrap_or(false)
 }
 
 fn shell_quote(value: &str) -> String {
