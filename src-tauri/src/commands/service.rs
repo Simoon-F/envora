@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
+#[cfg(unix)]
 use std::process::Command;
 
 use tauri::State;
@@ -577,6 +578,9 @@ fn service_display_name(service_type: &str) -> &str {
 }
 
 fn port_owner_hint(port: u16) -> String {
+    #[cfg(not(unix))]
+    let _ = port;
+
     #[cfg(unix)]
     {
         match Command::new("lsof")

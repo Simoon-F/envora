@@ -23,35 +23,41 @@ fn php_dir(settings: &crate::settings::manager::AppSettings, version: &str) -> P
 fn php_ini_path(settings: &crate::settings::manager::AppSettings, version: &str) -> PathBuf {
     #[cfg(target_os = "windows")]
     {
-        return php_dir(settings, version).join("php.ini");
+        php_dir(settings, version).join("php.ini")
     }
 
-    php_dir(settings, version).join("lib").join("php.ini")
+    #[cfg(not(target_os = "windows"))]
+    {
+        php_dir(settings, version).join("lib").join("php.ini")
+    }
 }
 
 /// Get the extension directory for a PHP version
 fn php_ext_dir(settings: &crate::settings::manager::AppSettings, version: &str) -> PathBuf {
     #[cfg(target_os = "windows")]
     {
-        return php_dir(settings, version).join("ext");
+        php_dir(settings, version).join("ext")
     }
 
-    // Try to find the extension directory
-    let base = php_dir(settings, version)
-        .join("lib")
-        .join("php")
-        .join("extensions");
-    if base.exists() {
-        // Find the subdirectory (e.g., no-debug-non-zts-20240924)
-        if let Ok(entries) = std::fs::read_dir(&base) {
-            for entry in entries.flatten() {
-                if entry.path().is_dir() {
-                    return entry.path();
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Try to find the extension directory
+        let base = php_dir(settings, version)
+            .join("lib")
+            .join("php")
+            .join("extensions");
+        if base.exists() {
+            // Find the subdirectory (e.g., no-debug-non-zts-20240924)
+            if let Ok(entries) = std::fs::read_dir(&base) {
+                for entry in entries.flatten() {
+                    if entry.path().is_dir() {
+                        return entry.path();
+                    }
                 }
             }
         }
+        base
     }
-    base
 }
 
 fn extension_suffix() -> &'static str {
@@ -307,68 +313,76 @@ pub async fn install_pecl_extension(
     version: String,
     extension_name: String,
 ) -> Result<(), AppError> {
-    let settings = state.settings.lock().await;
-    let dir = php_dir(settings.get(), &version);
     #[cfg(target_os = "windows")]
     {
+        let _ = state;
         return Err(AppError::DependencyMissing(
-            "PECL source builds are not supported for Envora managed PHP on Windows yet. Use prebuilt Windows DLL extensions that match PHP NTS VS17 x64.".to_string(),
+            format!(
+                "PECL source builds are not supported for Envora managed PHP on Windows yet. Use a prebuilt Windows DLL for {} that matches PHP {} NTS VS17 x64.",
+                extension_name, version
+            ),
         ));
     }
 
-    let phpize_bin = dir.join("bin").join("phpize");
-    let php_config_bin = dir.join("bin").join("php-config");
-    let pecl_bin = dir.join("bin").join("pecl");
-    drop(settings);
+    #[cfg(not(target_os = "windows"))]
+    {
+        let settings = state.settings.lock().await;
+        let dir = php_dir(settings.get(), &version);
 
-    // Check tools exist
-    if !phpize_bin.exists() {
-        return Err(AppError::DependencyMissing(
-            "phpize not found — PHP dev package may be missing".to_string(),
-        ));
-    }
-    if !php_config_bin.exists() {
-        return Err(AppError::DependencyMissing(
-            "php-config not found — PHP dev package may be missing".to_string(),
-        ));
-    }
+        let phpize_bin = dir.join("bin").join("phpize");
+        let php_config_bin = dir.join("bin").join("php-config");
+        let pecl_bin = dir.join("bin").join("pecl");
+        drop(settings);
 
-    // pecl might not exist — fall back to phpize + configure + make
-    let build_dir = std::path::PathBuf::from("/tmp/envora-pecl").join(&extension_name);
-    let _ = std::fs::remove_dir_all(&build_dir);
-    std::fs::create_dir_all(&build_dir)?;
-
-    // Try pecl first
-    if pecl_bin.exists() {
-        let output = crate::core::platform::PlatformOps::shell_command(&format!(
-            "cd \"{}\" && \"{}\" install -f \"{}\" 2>&1",
-            build_dir.display(),
-            pecl_bin.display(),
-            extension_name
-        ))
-        .output()?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            return Err(AppError::Build(format!(
-                "PECL install failed for {}:\n{}",
-                extension_name,
-                if stderr.is_empty() { stdout } else { stderr }
-            )));
+        // Check tools exist
+        if !phpize_bin.exists() {
+            return Err(AppError::DependencyMissing(
+                "phpize not found — PHP dev package may be missing".to_string(),
+            ));
+        }
+        if !php_config_bin.exists() {
+            return Err(AppError::DependencyMissing(
+                "php-config not found — PHP dev package may be missing".to_string(),
+            ));
         }
 
-        // Add extension line if not already present
-        add_extension_to_ini(&dir, &extension_name)?;
+        // pecl might not exist — fall back to phpize + configure + make
+        let build_dir = std::path::PathBuf::from("/tmp/envora-pecl").join(&extension_name);
         let _ = std::fs::remove_dir_all(&build_dir);
-        return Ok(());
-    }
+        std::fs::create_dir_all(&build_dir)?;
 
-    // Fallback: check if we can find the extension source and compile manually
-    Err(AppError::DependencyMissing(format!(
-        "pecl not found. Install phpize and php-config first, then run:\npecl install {}",
-        extension_name
-    )))
+        // Try pecl first
+        if pecl_bin.exists() {
+            let output = crate::core::platform::PlatformOps::shell_command(&format!(
+                "cd \"{}\" && \"{}\" install -f \"{}\" 2>&1",
+                build_dir.display(),
+                pecl_bin.display(),
+                extension_name
+            ))
+            .output()?;
+
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                return Err(AppError::Build(format!(
+                    "PECL install failed for {}:\n{}",
+                    extension_name,
+                    if stderr.is_empty() { stdout } else { stderr }
+                )));
+            }
+
+            // Add extension line if not already present
+            add_extension_to_ini(&dir, &extension_name)?;
+            let _ = std::fs::remove_dir_all(&build_dir);
+            return Ok(());
+        }
+
+        // Fallback: check if we can find the extension source and compile manually
+        Err(AppError::DependencyMissing(format!(
+            "pecl not found. Install phpize and php-config first, then run:\npecl install {}",
+            extension_name
+        )))
+    }
 }
 
 fn add_extension_to_ini(install_dir: &std::path::Path, ext_name: &str) -> Result<(), AppError> {

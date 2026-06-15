@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::path::Path;
 
+#[cfg(target_os = "macos")]
 use crate::core::platform::PlatformOps;
 use crate::core::AppError;
 
@@ -80,6 +81,9 @@ impl ArchiveExtractor {
 
     /// Sign all binaries in a directory (macOS ad-hoc signing)
     pub fn sign_binaries(dir: &Path) -> Result<(), AppError> {
+        #[cfg(not(target_os = "macos"))]
+        let _ = dir;
+
         #[cfg(target_os = "macos")]
         {
             Self::sign_binaries_recursive(dir)?;

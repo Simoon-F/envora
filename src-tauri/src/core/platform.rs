@@ -33,6 +33,9 @@ impl PlatformOps {
 
     /// Ad-hoc sign a binary (macOS only, no-op on other platforms)
     pub fn sign_binary(path: &Path) -> Result<(), AppError> {
+        #[cfg(not(target_os = "macos"))]
+        let _ = path;
+
         #[cfg(target_os = "macos")]
         {
             let output = Command::new("codesign")

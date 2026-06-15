@@ -98,7 +98,7 @@ pub(crate) fn ensure_shell_environment(state: &AppState) -> Result<(), AppError>
     )?;
 
     #[cfg(windows)]
-    install_windows_system_path(&bin_dir)?;
+    install_windows_user_path(&bin_dir)?;
 
     let profile = shell_profile_path()?;
     if let Some(parent) = profile.parent() {
@@ -120,7 +120,7 @@ pub(crate) fn ensure_shell_environment(state: &AppState) -> Result<(), AppError>
 fn env_script_path(state: &AppState) -> std::path::PathBuf {
     #[cfg(windows)]
     {
-        return state.data_dir.join("env.ps1");
+        state.data_dir.join("env.ps1")
     }
 
     #[cfg(not(windows))]
@@ -135,10 +135,10 @@ fn shell_profile_path() -> Result<std::path::PathBuf, AppError> {
 
     #[cfg(windows)]
     {
-        return Ok(home
+        Ok(home
             .join("Documents")
             .join("PowerShell")
-            .join("Microsoft.PowerShell_profile.ps1"));
+            .join("Microsoft.PowerShell_profile.ps1"))
     }
 
     #[cfg(not(windows))]
@@ -166,7 +166,7 @@ fn shell_env_script(data_dir: &str) -> String {
     #[cfg(windows)]
     {
         let home = powershell_quote(data_dir);
-        return format!(
+        format!(
             "# Envora shell environment\n\
              $env:ENVORA_HOME = {home}\n\
              $env:ENVORA_BIN = Join-Path $env:ENVORA_HOME 'bin'\n\
@@ -179,7 +179,7 @@ fn shell_env_script(data_dir: &str) -> String {
              if (Test-Path $env:ENVORA_JAVA_HOME_FILE) {{\n\
              \x20 $env:JAVA_HOME = (Get-Content -Raw $env:ENVORA_JAVA_HOME_FILE).Trim()\n\
              }}\n"
-        );
+        )
     }
 
     #[cfg(not(windows))]
@@ -207,11 +207,11 @@ fn profile_source_block(env_script: &str) -> String {
     #[cfg(windows)]
     {
         let quoted = powershell_quote(env_script);
-        return format!(
+        format!(
             "{ENVORA_PROFILE_BEGIN}\n\
              if (Test-Path {quoted}) {{ . {quoted} }}\n\
              {ENVORA_PROFILE_END}\n"
-        );
+        )
     }
 
     #[cfg(not(windows))]
@@ -248,21 +248,24 @@ fn replace_or_append_profile_block(current: &str, block: &str) -> String {
 }
 
 #[cfg(windows)]
-fn install_windows_system_path(bin_dir: &Path) -> Result<(), AppError> {
+fn install_windows_user_path(bin_dir: &Path) -> Result<(), AppError> {
     let bin = powershell_quote(&bin_dir.display().to_string());
     let script = format!(
-        "$bin = {bin}; \
-         $path = [Environment]::GetEnvironmentVariable('Path', 'Machine'); \
+        "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); \
+         $OutputEncoding = [Console]::OutputEncoding; \
+         $bin = {bin}; \
+         $path = [Environment]::GetEnvironmentVariable('Path', 'User'); \
          if ([string]::IsNullOrEmpty($path)) {{ \
-         \x20 [Environment]::SetEnvironmentVariable('Path', $bin, 'Machine') \
+         \x20 [Environment]::SetEnvironmentVariable('Path', $bin, 'User') \
          }} elseif (($path -split ';') -notcontains $bin) {{ \
-         \x20 [Environment]::SetEnvironmentVariable('Path', \"$bin;$path\", 'Machine') \
+         \x20 [Environment]::SetEnvironmentVariable('Path', \"$bin;$path\", 'User') \
          }}"
     );
 
     let output = Command::new("powershell.exe")
         .args([
             "-NoProfile",
+            "-NonInteractive",
             "-ExecutionPolicy",
             "Bypass",
             "-Command",
@@ -271,9 +274,14 @@ fn install_windows_system_path(bin_dir: &Path) -> Result<(), AppError> {
         .output()?;
 
     if !output.status.success() {
+        let message = String::from_utf8_lossy(&output.stderr).trim().to_string();
         return Err(AppError::Other(format!(
-            "Failed to update system PATH. Please run Envora as administrator: {}",
-            String::from_utf8_lossy(&output.stderr)
+            "Failed to update the current user PATH: {}",
+            if message.is_empty() {
+                "PowerShell exited without an error message".to_string()
+            } else {
+                message
+            }
         )));
     }
 

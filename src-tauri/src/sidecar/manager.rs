@@ -354,6 +354,9 @@ impl SidecarManager {
 
 /// Stop Envora runtime processes that detached from the in-memory manager.
 pub fn cleanup_envora_runtime_processes(data_dir: &Path) {
+    #[cfg(not(unix))]
+    let _ = data_dir;
+
     #[cfg(unix)]
     {
         let runtimes_dir = data_dir.join("runtimes").display().to_string();
@@ -391,6 +394,9 @@ pub fn cleanup_envora_runtime_processes(data_dir: &Path) {
 
 /// Stop orphaned same-service listeners that can remain after a daemonized process lost its master.
 pub fn cleanup_service_port_listeners(service_type: &str, port: u16) {
+    #[cfg(not(unix))]
+    let _ = (service_type, port);
+
     #[cfg(unix)]
     {
         let output = match std::process::Command::new("lsof")
