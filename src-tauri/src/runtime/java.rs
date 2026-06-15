@@ -172,7 +172,7 @@ impl JavaProvider {
         for entry in std::fs::read_dir(&jdk_home)? {
             let entry = entry?;
             let dest = install_dir.join(entry.file_name());
-            std::fs::rename(entry.path(), dest)?;
+            PlatformOps::move_path(&entry.path(), &dest)?;
         }
 
         Ok(())
@@ -232,7 +232,7 @@ impl RuntimeProvider for JavaProvider {
         }
         std::fs::create_dir_all(&install_dir)?;
 
-        let download_dir = PathBuf::from("/tmp/envora-download");
+        let download_dir = self.java_dir().join(".downloads");
         std::fs::create_dir_all(&download_dir)?;
         let archive_path = download_dir.join(java_archive_name(version));
 

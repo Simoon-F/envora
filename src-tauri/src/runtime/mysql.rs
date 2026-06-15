@@ -183,7 +183,7 @@ impl RuntimeProvider for MysqlProvider {
             let inner = entries[0].path();
             for entry in std::fs::read_dir(&inner)?.flatten() {
                 let dest = install_dir.join(entry.file_name());
-                std::fs::rename(entry.path(), dest)?;
+                PlatformOps::move_path(&entry.path(), &dest)?;
             }
             let _ = std::fs::remove_dir_all(inner);
         }

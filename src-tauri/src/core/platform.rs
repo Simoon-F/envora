@@ -74,6 +74,48 @@ impl PlatformOps {
         Ok(())
     }
 
+    /// Move a file or directory, falling back to copy+remove when rename cannot cross devices.
+    pub fn move_path(from: &Path, to: &Path) -> Result<(), AppError> {
+        match std::fs::rename(from, to) {
+            Ok(()) => Ok(()),
+            Err(rename_error) => {
+                if from.is_dir() {
+                    Self::copy_dir_recursive(from, to)?;
+                    std::fs::remove_dir_all(from)?;
+                } else {
+                    std::fs::copy(from, to)?;
+                    std::fs::remove_file(from)?;
+                }
+                tracing::debug!(
+                    "Moved {} to {} via copy fallback after rename failed: {}",
+                    from.display(),
+                    to.display(),
+                    rename_error
+                );
+                Ok(())
+            }
+        }
+    }
+
+    fn copy_dir_recursive(from: &Path, to: &Path) -> Result<(), AppError> {
+        std::fs::create_dir_all(to)?;
+        for entry in std::fs::read_dir(from)? {
+            let entry = entry?;
+            let source = entry.path();
+            let target = to.join(entry.file_name());
+
+            if source.is_dir() {
+                Self::copy_dir_recursive(&source, &target)?;
+            } else {
+                if let Some(parent) = target.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::copy(&source, &target)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Check if Xcode Command Line Tools are installed (macOS)
     pub fn check_build_tools() -> Result<(), AppError> {
         #[cfg(target_os = "macos")]

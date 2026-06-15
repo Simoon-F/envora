@@ -351,7 +351,7 @@ impl PhpProvider {
         for entry in std::fs::read_dir(&inner_dir)? {
             let entry = entry?;
             let dest = install_dir.join(entry.file_name());
-            std::fs::rename(entry.path(), &dest)?;
+            PlatformOps::move_path(&entry.path(), &dest)?;
         }
 
         Ok(())
@@ -365,7 +365,7 @@ impl PhpProvider {
         for entry in std::fs::read_dir(extract_temp)? {
             let entry = entry?;
             let dest = install_dir.join(entry.file_name());
-            std::fs::rename(entry.path(), &dest)?;
+            PlatformOps::move_path(&entry.path(), &dest)?;
         }
 
         Ok(())
@@ -379,7 +379,7 @@ impl PhpProvider {
         for entry in std::fs::read_dir(extract_temp)? {
             let entry = entry?;
             let dest = install_dir.join(entry.file_name());
-            std::fs::rename(entry.path(), &dest)?;
+            PlatformOps::move_path(&entry.path(), &dest)?;
         }
 
         Ok(())
@@ -465,7 +465,7 @@ impl RuntimeProvider for PhpProvider {
         // Download pre-compiled package with real-time progress
         let url = php_download_url(version);
 
-        let download_dir = PathBuf::from("/tmp/envora-download");
+        let download_dir = self.php_dir().join(".downloads");
         std::fs::create_dir_all(&download_dir)?;
         let archive_path = download_dir.join(php_archive_name(version));
 
