@@ -1,7 +1,7 @@
 {
   "name": "envora",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "SIMON FENG <simoon.feng@gmail.com>",
   "type": "module",
   "scripts": {
