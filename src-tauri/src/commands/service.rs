@@ -124,6 +124,7 @@ pub async fn start_service(
 ) -> Result<ServiceInfo, AppError> {
     let settings = state.settings.lock().await;
     let runtime_dir = settings.get().runtime_dir.clone();
+    let bin_dir = settings.get().bin_dir.clone();
     drop(settings);
 
     let (config, port) = match service_type.as_str() {
@@ -183,6 +184,7 @@ pub async fn start_service(
         }
         "php-fpm" => {
             sanitize_php_ini_for_runtime(&runtime_dir, &version)?;
+            write_windows_php_cli_launcher(&runtime_dir, &bin_dir, &version)?;
             (
                 php_fastcgi_config(&runtime_dir, &state.logs_dir(), &version),
                 9000u16,
@@ -244,6 +246,7 @@ pub async fn start_all_services(state: State<'_, AppState>) -> Result<Vec<Servic
     let settings = state.settings.lock().await;
     let runtime_dir = settings.get().runtime_dir.clone();
     let logs_dir = state.logs_dir().clone();
+    let bin_dir = settings.get().bin_dir.clone();
     let defaults = settings.get().default_versions.clone();
     drop(settings);
 
@@ -285,7 +288,8 @@ pub async fn start_all_services(state: State<'_, AppState>) -> Result<Vec<Servic
         drop(sidecar);
 
         // Build service config
-        let (config, port) = build_service_config(service_type, &version, &runtime_dir, &logs_dir)?;
+        let (config, port) =
+            build_service_config(service_type, &version, &runtime_dir, &logs_dir, &bin_dir)?;
         if let Err(e) = ensure_port_available(service_type, port) {
             results.push(ServiceInfo {
                 id: format!("{}-{}", service_type, version),
@@ -348,6 +352,7 @@ fn build_service_config(
     version: &str,
     runtime_dir: &std::path::Path,
     logs_dir: &std::path::Path,
+    bin_dir: &std::path::Path,
 ) -> Result<(crate::sidecar::manager::SidecarConfig, u16), AppError> {
     match service_type {
         "nginx" => {
@@ -406,6 +411,7 @@ fn build_service_config(
         "php-fpm" => Ok((
             {
                 sanitize_php_ini_for_runtime(runtime_dir, version)?;
+                write_windows_php_cli_launcher(runtime_dir, bin_dir, version)?;
                 php_fastcgi_config(&runtime_dir, &logs_dir, version)
             },
             9000u16,
@@ -560,6 +566,47 @@ fn sanitize_php_ini_for_runtime(runtime_dir: &Path, version: &str) -> Result<(),
     }
 
     Ok(())
+}
+
+fn write_windows_php_cli_launcher(
+    runtime_dir: &Path,
+    bin_dir: &Path,
+    version: &str,
+) -> Result<(), AppError> {
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (runtime_dir, bin_dir, version);
+        Ok(())
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let install_dir = runtime_dir.join("php").join(version);
+        let php_bin = install_dir.join("php.exe");
+        if !php_bin.exists() {
+            return Ok(());
+        }
+
+        std::fs::create_dir_all(bin_dir)?;
+
+        let stale_exe = bin_dir.join("php.exe");
+        if stale_exe.exists() {
+            std::fs::remove_file(&stale_exe)?;
+        }
+
+        let launcher = bin_dir.join("php.cmd");
+        let content = format!(
+            "@echo off\r\n\
+             setlocal\r\n\
+             set PHPRC={}\r\n\
+             \"{}\" %*\r\n",
+            install_dir.display(),
+            php_bin.display(),
+        );
+        std::fs::write(launcher, content)?;
+
+        Ok(())
+    }
 }
 
 fn ensure_port_available(service_type: &str, port: u16) -> Result<(), AppError> {

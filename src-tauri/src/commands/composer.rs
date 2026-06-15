@@ -77,8 +77,8 @@ pub(crate) fn write_composer_launcher(state: &AppState) -> Result<(), AppError> 
         let content = format!(
             "@echo off\r\n\
              set DIR=%~dp0\r\n\
-             if exist \"%DIR%php.exe\" (\r\n\
-             \x20 \"%DIR%php.exe\" \"%DIR%composer.phar\" %*\r\n\
+             if exist \"%DIR%php.cmd\" (\r\n\
+             \x20 call \"%DIR%php.cmd\" \"%DIR%composer.phar\" %*\r\n\
              ) else (\r\n\
              \x20 php \"%DIR%composer.phar\" %*\r\n\
              )\r\n"
@@ -395,7 +395,7 @@ pub async fn install_composer(
     }
 
     write_composer_launcher(&state)?;
-    crate::commands::settings::ensure_shell_environment(&state)?;
+    crate::commands::settings::ensure_shell_environment(&state).await?;
 
     emit_progress(
         &app,

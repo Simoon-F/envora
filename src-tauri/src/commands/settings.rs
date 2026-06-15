@@ -17,6 +17,8 @@ pub struct ShellEnvironmentStatus {
     pub bin_dir: String,
     pub env_script: String,
     pub shell_profile: String,
+    pub profile_installed: bool,
+    pub user_path_installed: bool,
     pub is_installed: bool,
 }
 
@@ -54,18 +56,30 @@ pub async fn update_settings(
 pub async fn get_shell_environment_status(
     state: State<'_, AppState>,
 ) -> Result<ShellEnvironmentStatus, AppError> {
+    let settings = {
+        let settings = state.settings.lock().await;
+        settings.get().clone()
+    };
     let profile = shell_profile_path()?;
-    let is_installed = profile
+    let profile_installed = profile
         .exists()
         .then(|| std::fs::read_to_string(&profile).ok())
         .flatten()
         .map(|content| content.contains(ENVORA_PROFILE_BEGIN))
         .unwrap_or(false);
+    let user_path_installed = user_path_contains_bin_dir(&settings.bin_dir)?;
+    let is_installed = if cfg!(windows) {
+        profile_installed && user_path_installed
+    } else {
+        profile_installed
+    };
 
     Ok(ShellEnvironmentStatus {
-        bin_dir: state.bin_dir().display().to_string(),
-        env_script: env_script_path(&state).display().to_string(),
+        bin_dir: settings.bin_dir.display().to_string(),
+        env_script: env_script_path(&settings).display().to_string(),
         shell_profile: profile.display().to_string(),
+        profile_installed,
+        user_path_installed,
         is_installed,
     })
 }
@@ -74,13 +88,18 @@ pub async fn get_shell_environment_status(
 pub async fn install_shell_environment(
     state: State<'_, AppState>,
 ) -> Result<ShellEnvironmentStatus, AppError> {
-    ensure_shell_environment(&state)?;
+    ensure_shell_environment(&state).await?;
     get_shell_environment_status(state).await
 }
 
-pub(crate) fn ensure_shell_environment(state: &AppState) -> Result<(), AppError> {
-    let bin_dir = state.bin_dir();
-    let composer_dir = state.data_dir.join("composer");
+pub(crate) async fn ensure_shell_environment(state: &AppState) -> Result<(), AppError> {
+    let settings = {
+        let settings = state.settings.lock().await;
+        settings.get().clone()
+    };
+    let bin_dir = settings.bin_dir.clone();
+    let data_dir = settings.data_dir.clone();
+    let composer_dir = data_dir.join("composer");
     std::fs::create_dir_all(&bin_dir)?;
     std::fs::create_dir_all(&composer_dir)?;
     std::fs::create_dir_all(composer_dir.join("cache"))?;
@@ -88,13 +107,13 @@ pub(crate) fn ensure_shell_environment(state: &AppState) -> Result<(), AppError>
         crate::commands::composer::write_composer_launcher(&state)?;
     }
 
-    let env_script = env_script_path(&state);
+    let env_script = env_script_path(&settings);
     if let Some(parent) = env_script.parent() {
         std::fs::create_dir_all(parent)?;
     }
     std::fs::write(
         &env_script,
-        shell_env_script(&state.data_dir.display().to_string()),
+        shell_env_script(&data_dir.display().to_string()),
     )?;
 
     #[cfg(windows)]
@@ -117,15 +136,15 @@ pub(crate) fn ensure_shell_environment(state: &AppState) -> Result<(), AppError>
     Ok(())
 }
 
-fn env_script_path(state: &AppState) -> std::path::PathBuf {
+fn env_script_path(settings: &AppSettings) -> std::path::PathBuf {
     #[cfg(windows)]
     {
-        state.data_dir.join("env.ps1")
+        settings.data_dir.join("env.ps1")
     }
 
     #[cfg(not(windows))]
     {
-        state.data_dir.join("env.sh")
+        settings.data_dir.join("env.sh")
     }
 }
 
@@ -247,6 +266,19 @@ fn replace_or_append_profile_block(current: &str, block: &str) -> String {
     next
 }
 
+fn user_path_contains_bin_dir(bin_dir: &std::path::Path) -> Result<bool, AppError> {
+    #[cfg(windows)]
+    {
+        windows_user_path_contains(bin_dir)
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = bin_dir;
+        Ok(false)
+    }
+}
+
 #[cfg(windows)]
 fn install_windows_user_path(bin_dir: &Path) -> Result<(), AppError> {
     let bin = powershell_quote(&bin_dir.display().to_string());
@@ -255,11 +287,19 @@ fn install_windows_user_path(bin_dir: &Path) -> Result<(), AppError> {
          $OutputEncoding = [Console]::OutputEncoding; \
          $bin = {bin}; \
          $path = [Environment]::GetEnvironmentVariable('Path', 'User'); \
-         if ([string]::IsNullOrEmpty($path)) {{ \
-         \x20 [Environment]::SetEnvironmentVariable('Path', $bin, 'User') \
-         }} elseif (($path -split ';') -notcontains $bin) {{ \
-         \x20 [Environment]::SetEnvironmentVariable('Path', \"$bin;$path\", 'User') \
-         }}"
+         $parts = @(); \
+         if (![string]::IsNullOrWhiteSpace($path)) {{ \
+         \x20 $parts = $path -split ';' | Where-Object {{ ![string]::IsNullOrWhiteSpace($_) }} \
+         }} \
+         $normalizedBin = $bin.TrimEnd('\\', '/'); \
+         $exists = $parts | Where-Object {{ $_.TrimEnd('\\', '/') -ieq $normalizedBin }}; \
+         if (!$exists) {{ \
+         \x20 $parts = @($bin) + $parts; \
+         \x20 [Environment]::SetEnvironmentVariable('Path', ($parts -join ';'), 'User') \
+         }} \
+         $verify = [Environment]::GetEnvironmentVariable('Path', 'User'); \
+         $verified = ($verify -split ';' | Where-Object {{ $_.TrimEnd('\\', '/') -ieq $normalizedBin }}); \
+         if (!$verified) {{ throw 'Envora bin directory was not persisted to the user Path.' }}"
     );
 
     let output = Command::new("powershell.exe")
@@ -286,4 +326,21 @@ fn install_windows_user_path(bin_dir: &Path) -> Result<(), AppError> {
     }
 
     Ok(())
+}
+
+#[cfg(windows)]
+fn windows_user_path_contains(bin_dir: &Path) -> Result<bool, AppError> {
+    let bin = powershell_quote(&bin_dir.display().to_string());
+    let script = format!(
+        "$bin = {bin}; \
+         $path = [Environment]::GetEnvironmentVariable('Path', 'User'); \
+         $normalizedBin = $bin.TrimEnd('\\', '/'); \
+         if (($path -split ';' | Where-Object {{ $_.TrimEnd('\\', '/') -ieq $normalizedBin }})) {{ exit 0 }} else {{ exit 1 }}"
+    );
+
+    let output = Command::new("powershell.exe")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .output()?;
+
+    Ok(output.status.success())
 }

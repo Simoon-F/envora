@@ -125,6 +125,29 @@ impl PhpProvider {
         self.php_dir().join(version)
     }
 
+    #[cfg(target_os = "windows")]
+    fn write_php_launcher(&self, version: &str) -> Result<(), AppError> {
+        let install_dir = self.version_dir(version);
+        let php_bin = install_dir.join("php.exe");
+        let launcher = self.bin_dir.join("php.cmd");
+
+        if let Some(parent) = launcher.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let content = format!(
+            "@echo off\r\n\
+             setlocal\r\n\
+             set PHPRC={}\r\n\
+             \"{}\" %*\r\n",
+            install_dir.display(),
+            php_bin.display(),
+        );
+        std::fs::write(&launcher, content)?;
+
+        Ok(())
+    }
+
     #[cfg(not(target_os = "windows"))]
     fn write_php_launcher(&self, version: &str) -> Result<(), AppError> {
         let install_dir = self.version_dir(version);
@@ -592,11 +615,13 @@ impl RuntimeProvider for PhpProvider {
         let default = self.get_default()?;
         if default.as_deref() == Some(version) {
             #[cfg(target_os = "windows")]
-            let link = self.bin_dir.join("php.exe");
+            let links = [self.bin_dir.join("php.cmd"), self.bin_dir.join("php.exe")];
             #[cfg(not(target_os = "windows"))]
-            let link = self.bin_dir.join("php");
-            if link.exists() {
-                std::fs::remove_file(&link)?;
+            let links = [self.bin_dir.join("php")];
+            for link in links {
+                if link.exists() {
+                    std::fs::remove_file(&link)?;
+                }
             }
         }
 
@@ -619,13 +644,16 @@ impl RuntimeProvider for PhpProvider {
         }
 
         #[cfg(target_os = "windows")]
-        let link = self.bin_dir.join("php.exe");
-        #[cfg(not(target_os = "windows"))]
-        let link = self.bin_dir.join("php");
-        #[cfg(target_os = "windows")]
-        PlatformOps::create_link(&php_bin, &link)?;
+        {
+            let stale_exe = self.bin_dir.join("php.exe");
+            if stale_exe.exists() {
+                std::fs::remove_file(&stale_exe)?;
+            }
+            self.write_php_launcher(version)?;
+        }
         #[cfg(not(target_os = "windows"))]
         {
+            let link = self.bin_dir.join("php");
             if link.exists() {
                 std::fs::remove_file(&link)?;
             }

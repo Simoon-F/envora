@@ -65,7 +65,7 @@ pub async fn install_version(
     let installed = provider
         .install(version.as_str(), Some(on_progress))
         .await?;
-    crate::commands::settings::ensure_shell_environment(&state)?;
+    crate::commands::settings::ensure_shell_environment(&state).await?;
 
     Ok(installed)
 }
@@ -131,7 +131,7 @@ pub async fn start_runtime_install(
 
         match provider.install(version.as_str(), Some(on_progress)).await {
             Ok(installed) => {
-                let _ = crate::commands::settings::ensure_shell_environment(&state);
+                let _ = crate::commands::settings::ensure_shell_environment(&state).await;
                 let operation = {
                     let mut operations = state.operations.lock().await;
                     operations.complete(&operation_id, "安装完成")

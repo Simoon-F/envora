@@ -109,6 +109,14 @@ export function Settings() {
               </Badge>
               <span className="text-xs text-muted-foreground">新开终端后生效</span>
             </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={shellEnv?.profile_installed ? 'outline' : 'secondary'}>
+                Profile {shellEnv?.profile_installed ? '已写入' : '未写入'}
+              </Badge>
+              <Badge variant={shellEnv?.user_path_installed ? 'outline' : 'secondary'}>
+                PATH {shellEnv?.user_path_installed ? '已写入' : '未写入'}
+              </Badge>
+            </div>
 
             <div>
               <Label className="text-xs text-muted-foreground">命令目录</Label>

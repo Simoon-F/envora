@@ -14,5 +14,7 @@ export interface ShellEnvironmentStatus {
   bin_dir: string;
   env_script: string;
   shell_profile: string;
+  profile_installed: boolean;
+  user_path_installed: boolean;
   is_installed: boolean;
 }
