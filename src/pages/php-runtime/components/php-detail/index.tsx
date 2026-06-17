@@ -15,7 +15,7 @@ interface PeclInfo { name: string; description: string; installed: boolean; }
 
 // ── Versions Tab ───────────────────────────────────────────────────
 
-function VersionsTab() {
+const VersionsTab = () => {
   const { data: installed, isLoading, mutate } = useInstalledVersions('php');
   const { data: available, mutate: mutateAvailable } = useAvailableVersions('php');
   const { data: defaultVersion, mutate: mutateDefault } = useDefaultVersion('php');
@@ -95,11 +95,11 @@ function VersionsTab() {
       )}
     </div>
   );
-}
+};
 
 // ── php.ini Editor ─────────────────────────────────────────────────
 
-function PhpIniEditor({ version }: { version: string }) {
+const PhpIniEditor = ({ version }: { version: string }) => {
   const [content, setContent] = useState<string | null>(null);
   const [original, setOriginal] = useState('');
   const [loading, setLoading] = useState(true);
@@ -130,11 +130,11 @@ function PhpIniEditor({ version }: { version: string }) {
       <textarea className="w-full h-96 font-mono text-xs bg-muted p-3 rounded-md border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
     </div>
   );
-}
+};
 
 // ── Extensions ─────────────────────────────────────────────────────
 
-function ExtensionManager({ version }: { version: string }) {
+const ExtensionManager = ({ version }: { version: string }) => {
   const [extensions, setExtensions] = useState<ExtensionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
@@ -187,11 +187,11 @@ function ExtensionManager({ version }: { version: string }) {
       </div>
     </div>
   );
-}
+};
 
 // ── PECL ───────────────────────────────────────────────────────────
 
-function PeclInstaller({ version }: { version: string }) {
+const PeclInstaller = ({ version }: { version: string }) => {
   const [extensions, setExtensions] = useState<PeclInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [installing, setInstalling] = useState<string | null>(null);
@@ -235,11 +235,11 @@ function PeclInstaller({ version }: { version: string }) {
       </div>
     </div>
   );
-}
+};
 
 // ── Main Component ─────────────────────────────────────────────────
 
-export function PHPDetail({ version }: { version: string }) {
+export const PHPDetail = ({ version }: { version: string }) => {
   const [activeTab, setActiveTab] = useState('versions');
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -255,12 +255,12 @@ export function PHPDetail({ version }: { version: string }) {
       <TabsContent value="pecl" className="mt-4"><Card><CardHeader><CardTitle className="text-base">PECL 扩展</CardTitle></CardHeader><CardContent><PeclInstaller key={version} version={version} /></CardContent></Card></TabsContent>
     </Tabs>
   );
-}
+};
 
-function formatBytes(bytes: number): string {
+const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
+};

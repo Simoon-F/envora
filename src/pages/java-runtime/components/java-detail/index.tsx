@@ -15,7 +15,7 @@ import {
 import { useOperationsStore } from '@/stores/operations';
 import type { RuntimeVersion, VersionInfo } from '@/types/runtime';
 
-function JavaVersionsTab() {
+const JavaVersionsTab = () => {
   const { data: installed, isLoading, mutate } = useInstalledVersions('java');
   const { data: available, mutate: mutateAvailable } = useAvailableVersions('java');
   const { data: defaultVersion, mutate: mutateDefault } = useDefaultVersion('java');
@@ -174,9 +174,9 @@ function JavaVersionsTab() {
       </div>
     </div>
   );
-}
+};
 
-function JavaShellInfo({ version }: { version: string }) {
+const JavaShellInfo = ({ version }: { version: string }) => {
   const javaHome = `~/.envora/runtimes/java/${version || '{version}'}`;
 
   return (
@@ -197,9 +197,9 @@ function JavaShellInfo({ version }: { version: string }) {
       </div>
     </div>
   );
-}
+};
 
-export function JavaDetail({ version }: { version: string }) {
+export const JavaDetail = ({ version }: { version: string }) => {
   const [activeTab, setActiveTab] = useState('versions');
 
   return (
@@ -230,12 +230,12 @@ export function JavaDetail({ version }: { version: string }) {
       </TabsContent>
     </Tabs>
   );
-}
+};
 
-function formatBytes(bytes: number): string {
+const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
+};

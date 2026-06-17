@@ -18,7 +18,7 @@ interface ExtensionInfo {
 
 // ═══════════ Config Editor ═══════════
 
-function PhpIniEditor({ version }: { version: string }) {
+const PhpIniEditor = ({ version }: { version: string }) => {
   const [content, setContent] = useState<string | null>(null);
   const [original, setOriginal] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -84,11 +84,11 @@ function PhpIniEditor({ version }: { version: string }) {
       />
     </div>
   );
-}
+};
 
 // ═══════════ Extension Manager ═══════════
 
-function ExtensionManager({ version }: { version: string }) {
+const ExtensionManager = ({ version }: { version: string }) => {
   const [extensions, setExtensions] = useState<ExtensionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
@@ -181,11 +181,11 @@ function ExtensionManager({ version }: { version: string }) {
       </div>
     </div>
   );
-}
+};
 
 // ═══════════ Version Tab ═══════════
 
-function VersionsTab() {
+const VersionsTab = () => {
   const { data: installed, isLoading, mutate } = useInstalledVersions('php');
   const { data: available } = useAvailableVersions('php');
   const { data: defaultVersion } = useDefaultVersion('php');
@@ -297,7 +297,7 @@ function VersionsTab() {
       </div>
     </div>
   );
-}
+};
 
 // ═══════════ PECL Installer ═══════════
 
@@ -307,7 +307,7 @@ interface PeclInfo {
   installed: boolean;
 }
 
-function PeclInstaller({ version }: { version: string }) {
+const PeclInstaller = ({ version }: { version: string }) => {
   const [extensions, setExtensions] = useState<PeclInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [installing, setInstalling] = useState<string | null>(null);
@@ -389,11 +389,11 @@ function PeclInstaller({ version }: { version: string }) {
       </div>
     </div>
   );
-}
+};
 
 // ═══════════ Main Page ═══════════
 
-export function PhpRuntime() {
+export const PhpRuntimeDetail = () => {
   const { data: installed } = useInstalledVersions('php');
   const { data: defaultVersion } = useDefaultVersion('php');
   const [activeTab, setActiveTab] = useState('versions');
@@ -486,12 +486,12 @@ export function PhpRuntime() {
       </Tabs>
     </div>
   );
-}
+};
 
-function formatBytes(bytes: number): string {
+const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
+};

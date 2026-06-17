@@ -1,8 +1,8 @@
 import { Badge } from '@/components/ui/badge';
-import { JavaDetail } from '@/components/runtime/java-detail';
+import { JavaDetail } from './components/java-detail';
 import { useDefaultVersion, useInstalledVersions } from '@/hooks/use-runtimes';
 
-export function JavaRuntime() {
+export const JavaRuntime = () => {
   const { data: installed } = useInstalledVersions('java');
   const { data: defaultVersion } = useDefaultVersion('java');
   const currentVersion = defaultVersion || installed?.[0]?.version || '';
@@ -18,4 +18,4 @@ export function JavaRuntime() {
       <JavaDetail version={currentVersion || 'latest'} />
     </div>
   );
-}
+};

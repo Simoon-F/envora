@@ -79,7 +79,7 @@ const commandPresets = [
   { label: '诊断', args: ['diagnose'] },
 ];
 
-function collectMissingExtensions(result: ComposerCommandResult | null) {
+const collectMissingExtensions = (result: ComposerCommandResult | null) => {
   if (!result) return [];
 
   const output = [result.stdout, result.stderr].filter(Boolean).join('\n');
@@ -92,30 +92,30 @@ function collectMissingExtensions(result: ComposerCommandResult | null) {
   }
 
   return [...extensions];
-}
+};
 
-function extensionHint(extension: string) {
+const extensionHint = (extension: string) => {
   const name = extension.replace(/^ext-/, '');
   if (name === 'gd') {
     return 'GD 常用于验证码、缩略图、Excel 和图片处理。如果当前 PHP 包里没有 gd.so，需要换用或重新打包带 GD 的 PHP。';
   }
   return `当前 PHP 缺少 ${name} 扩展，Composer 不能确认依赖在本机可运行。`;
-}
+};
 
-function firstConfigValue(config: ComposerConfigEntry[], key: string) {
+const firstConfigValue = (config: ComposerConfigEntry[], key: string) => {
   return config.find((entry) => entry.key === key)?.value ?? '';
-}
+};
 
-function StatusRow({ label, value }: { label: string; value: string }) {
+const StatusRow = ({ label, value }: { label: string; value: string }) => {
   return (
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       <p className="break-all font-mono text-xs">{value || '-'}</p>
     </div>
   );
-}
+};
 
-function ComposerStatus({
+const ComposerStatus = ({
   info,
   loading,
   busy,
@@ -133,7 +133,7 @@ function ComposerStatus({
   onInstall: () => void;
   onUpdate: () => void;
   onRefresh: () => void;
-}) {
+}) => {
   if (loading) {
     return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   }
@@ -221,9 +221,9 @@ function ComposerStatus({
       )}
     </div>
   );
-}
+};
 
-function ComposerConfig() {
+const ComposerConfig = () => {
   const [config, setConfig] = useState<ComposerConfigEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -323,9 +323,9 @@ function ComposerConfig() {
       </div>
     </div>
   );
-}
+};
 
-function ComposerIssuePanel({
+const ComposerIssuePanel = ({
   result,
   info,
   onOpenPhp,
@@ -335,7 +335,7 @@ function ComposerIssuePanel({
   info: ComposerInfo | null;
   onOpenPhp: () => void;
   onIgnoreExtension: (extension: string) => void;
-}) {
+}) => {
   const missingExtensions = useMemo(() => collectMissingExtensions(result), [result]);
 
   if (missingExtensions.length === 0) {
@@ -383,9 +383,9 @@ function ComposerIssuePanel({
       </div>
     </div>
   );
-}
+};
 
-function ComposerRunner({ info }: { info: ComposerInfo | null }) {
+const ComposerRunner = ({ info }: { info: ComposerInfo | null }) => {
   const navigate = useNavigate();
   const { data: installedPhp } = useInstalledVersions('php');
   const { data: defaultPhp } = useDefaultVersion('php');
@@ -494,9 +494,9 @@ function ComposerRunner({ info }: { info: ComposerInfo | null }) {
       )}
     </div>
   );
-}
+};
 
-export function Composer() {
+export const ComposerDetail = () => {
   const [activeTab, setActiveTab] = useState('status');
   const [statusInfo, setStatusInfo] = useState<ComposerInfo | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -634,4 +634,4 @@ export function Composer() {
       </Tabs>
     </div>
   );
-}
+};

@@ -28,7 +28,7 @@ interface VHostConfFile {
 
 // ── nginx.conf Editor ──────────────────────────────────────────────
 
-function NginxConfEditor({ version }: { version: string }) {
+const NginxConfEditor = ({ version }: { version: string }) => {
   const [content, setContent] = useState<string | null>(null);
   const [original, setOriginal] = useState('');
   const [loading, setLoading] = useState(true);
@@ -74,11 +74,11 @@ function NginxConfEditor({ version }: { version: string }) {
       <textarea className="w-full h-72 font-mono text-xs bg-muted p-3 rounded-md border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
     </div>
   );
-}
+};
 
 // ── Virtual Hosts ──────────────────────────────────────────────────
 
-function VHostManager({ version }: { version: string }) {
+const VHostManager = ({ version }: { version: string }) => {
   const { data: defaultPhpVersion } = useDefaultVersion('php');
   const [vhosts, setVhosts] = useState<VirtualHost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -291,11 +291,11 @@ function VHostManager({ version }: { version: string }) {
       </Dialog>
     </div>
   );
-}
+};
 
 // ── Versions Tab ───────────────────────────────────────────────────
 
-function VersionsTab() {
+const VersionsTab = () => {
   const { data: installed, isLoading } = useInstalledVersions('nginx');
   if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   return (
@@ -308,11 +308,11 @@ function VersionsTab() {
       )) : <p className="text-sm text-muted-foreground">尚未安装任何版本。</p>}
     </div>
   );
-}
+};
 
 // ── Main Page ──────────────────────────────────────────────────────
 
-export function NginxRuntime() {
+export const NginxRuntimeDetail = () => {
   const { data: installed } = useInstalledVersions('nginx');
   const { data: defaultVersion } = useDefaultVersion('nginx');
   const [activeTab, setActiveTab] = useState('versions');
@@ -339,4 +339,4 @@ export function NginxRuntime() {
       </Tabs>
     </div>
   );
-}
+};

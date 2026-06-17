@@ -12,7 +12,7 @@ import type { RuntimeVersion } from '@/types/runtime';
 interface MysqlUser { user: string; host: string; }
 interface MysqlDatabase { name: string; }
 
-function MyCnfEditor({ version }: { version: string }) {
+const MyCnfEditor = ({ version }: { version: string }) => {
   const [content, setContent] = useState<string | null>(null);
   const [original, setOriginal] = useState('');
   const [loading, setLoading] = useState(true);
@@ -41,9 +41,9 @@ function MyCnfEditor({ version }: { version: string }) {
       <textarea className="w-full h-72 font-mono text-xs bg-muted p-3 rounded-md border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
     </div>
   );
-}
+};
 
-function UserManager({ version }: { version: string }) {
+const UserManager = ({ version }: { version: string }) => {
   const [users, setUsers] = useState<MysqlUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -103,9 +103,9 @@ function UserManager({ version }: { version: string }) {
       </div>
     </div>
   );
-}
+};
 
-function DatabaseManager({ version }: { version: string }) {
+const DatabaseManager = ({ version }: { version: string }) => {
   const [dbs, setDbs] = useState<MysqlDatabase[]>([]);
   const [loading, setLoading] = useState(true);
   const [newDb, setNewDb] = useState('');
@@ -136,9 +136,9 @@ function DatabaseManager({ version }: { version: string }) {
       </div>
     </div>
   );
-}
+};
 
-function VersionsTab() {
+const VersionsTab = () => {
   const { data: installed, isLoading } = useInstalledVersions('mysql');
   if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   return (
@@ -151,9 +151,9 @@ function VersionsTab() {
       )) : <p className="text-sm text-muted-foreground">尚未安装任何版本。</p>}
     </div>
   );
-}
+};
 
-export function MySQLDetail({ version }: { version: string }) {
+export const MySQLDetail = ({ version }: { version: string }) => {
   const [activeTab, setActiveTab] = useState('versions');
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -169,4 +169,4 @@ export function MySQLDetail({ version }: { version: string }) {
       <TabsContent value="databases" className="mt-4"><Card><CardHeader><CardTitle className="text-base">数据库</CardTitle></CardHeader><CardContent><DatabaseManager key={version} version={version} /></CardContent></Card></TabsContent>
     </Tabs>
   );
-}
+};

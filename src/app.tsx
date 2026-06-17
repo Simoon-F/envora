@@ -1,17 +1,17 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { SidebarLayout } from '@/components/layout/sidebar-layout';
-import { Dashboard } from '@/pages/dashboard-page';
-import { Runtimes } from '@/pages/runtimes-page';
+import { Dashboard } from '@/pages/dashboard';
+import { Runtimes } from '@/pages/runtimes';
 import { PhpRuntime } from '@/pages/php-runtime';
 import { MysqlRuntime } from '@/pages/mysql-runtime';
 import { NginxRuntime } from '@/pages/nginx-runtime';
 import { JavaRuntime } from '@/pages/java-runtime';
 import { NodeRuntime } from '@/pages/node-runtime';
-import { Composer } from '@/pages/composer-page';
-import { Settings } from '@/pages/settings-page';
+import { Composer } from '@/pages/composer';
+import { Settings } from '@/pages/settings';
 import { OperationEvents } from '@/components/runtime/operation-events';
 
-function App() {
+const App = () => {
   return (
     <BrowserRouter>
       <OperationEvents />
@@ -31,6 +31,6 @@ function App() {
       </Routes>
     </BrowserRouter>
   );
-}
+};
 
 export default App;

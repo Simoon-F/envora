@@ -1,43 +1,64 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Play, Square, RotateCw, Loader2, PowerOff, Power, FileText, Trash2 } from 'lucide-react';
-import { useAllServices, useStartService, useStopService, useRestartService, useStartAllServices, useStopAllServices, useServiceLog, useClearServiceLog } from '@/hooks/use-services';
+import {
+  useAllServices,
+  useClearServiceLog,
+  useRestartService,
+  useServiceLog,
+  useStartService,
+  useStopService,
+} from '@/hooks/use-services';
 import { useDefaultVersion } from '@/hooks/use-runtimes';
 import type { ServiceStatus } from '@/types/service';
-import { listen } from '@tauri-apps/api/event';
+import { FileText, Play, RotateCw, Square, Trash2 } from 'lucide-react';
 
 const runtimeName: Record<string, string> = {
-  nginx: 'nginx', mysql: 'mysql', 'php-fpm': 'php',
+  nginx: 'nginx',
+  mysql: 'mysql',
+  'php-fpm': 'php',
 };
 
 const statusColors: Record<ServiceStatus, string> = {
-  running: 'bg-green-500', stopped: 'bg-red-500', error: 'bg-red-500',
-  starting: 'bg-yellow-500', stopping: 'bg-yellow-500', unknown: 'bg-gray-500',
+  running: 'bg-green-500',
+  stopped: 'bg-red-500',
+  error: 'bg-red-500',
+  starting: 'bg-yellow-500',
+  stopping: 'bg-yellow-500',
+  unknown: 'bg-gray-500',
 };
 
 const statusLabels: Record<ServiceStatus, string> = {
-  running: '运行中', stopped: '已停止', error: '错误',
-  starting: '启动中...', stopping: '停止中...', unknown: '未知',
+  running: '运行中',
+  stopped: '已停止',
+  error: '错误',
+  starting: '启动中...',
+  stopping: '停止中...',
+  unknown: '未知',
 };
 
-function ServiceCard({ serviceType, title }: { serviceType: string; title: string }) {
+interface ServiceCardProps {
+  serviceType: string;
+  title: string;
+}
+
+export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
   const [logOpen, setLogOpen] = useState(false);
   const [actionError, setActionError] = useState('');
   const { data: services, mutate } = useAllServices();
   const { data: defaultVersion } = useDefaultVersion(runtimeName[serviceType]);
   const { data: serviceLog, isLoading: isLogLoading, mutate: refreshLog } = useServiceLog(
     logOpen ? serviceType : null,
-    logOpen && defaultVersion ? defaultVersion : null
+    logOpen && defaultVersion ? defaultVersion : null,
   );
   const { mutate: clearLog, isLoading: isClearingLog } = useClearServiceLog();
   const { mutate: startService, isLoading: isStarting } = useStartService();
   const { mutate: stopService, isLoading: isStopping } = useStopService();
   const { mutate: restartService, isLoading: isRestarting } = useRestartService();
 
-  const service = services?.find((s) => s.id.startsWith(serviceType));
+  const service = services?.find((item) => item.id.startsWith(serviceType));
   const status = service?.status ?? 'stopped';
 
   const handleStart = async () => {
@@ -87,7 +108,7 @@ function ServiceCard({ serviceType, title }: { serviceType: string; title: strin
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">{title}</CardTitle>
           <Badge variant={status === 'running' ? 'default' : 'secondary'}>
-            <span className={`h-2 w-2 rounded-full mr-2 ${statusColors[status]}`} />
+            <span className={`mr-2 h-2 w-2 rounded-full ${statusColors[status]}`} />
             {statusLabels[status]}
           </Badge>
         </CardHeader>
@@ -103,15 +124,18 @@ function ServiceCard({ serviceType, title }: { serviceType: string; title: strin
               {status === 'running' ? (
                 <>
                   <Button variant="outline" size="sm" onClick={handleStop} disabled={isStopping}>
-                    <Square className="h-3 w-3 mr-1" />停止
+                    <Square className="mr-1 h-3 w-3" />
+                    停止
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleRestart} disabled={isRestarting}>
-                    <RotateCw className="h-3 w-3 mr-1" />重启
+                    <RotateCw className="mr-1 h-3 w-3" />
+                    重启
                   </Button>
                 </>
               ) : (
                 <Button size="sm" onClick={handleStart} disabled={isStarting || !defaultVersion}>
-                  <Play className="h-3 w-3 mr-1" />启动
+                  <Play className="mr-1 h-3 w-3" />
+                  启动
                 </Button>
               )}
               <Button
@@ -123,7 +147,8 @@ function ServiceCard({ serviceType, title }: { serviceType: string; title: strin
                 }}
                 disabled={!defaultVersion}
               >
-                <FileText className="h-3 w-3 mr-1" />日志
+                <FileText className="mr-1 h-3 w-3" />
+                日志
               </Button>
             </div>
           </div>
@@ -136,13 +161,9 @@ function ServiceCard({ serviceType, title }: { serviceType: string; title: strin
             <DialogTitle>{title} 日志</DialogTitle>
           </DialogHeader>
           <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClearLog}
-              disabled={isClearingLog || !defaultVersion}
-            >
-              <Trash2 className="h-3 w-3 mr-1" />清空
+            <Button variant="outline" size="sm" onClick={handleClearLog} disabled={isClearingLog || !defaultVersion}>
+              <Trash2 className="mr-1 h-3 w-3" />
+              清空
             </Button>
           </div>
           <div className="max-h-[60vh] space-y-3 overflow-auto pr-1">
@@ -173,84 +194,4 @@ function ServiceCard({ serviceType, title }: { serviceType: string; title: strin
       </Dialog>
     </>
   );
-}
-
-export function Dashboard() {
-  const [startAllError, setStartAllError] = useState('');
-  const { isLoading, mutate } = useAllServices();
-  const { mutate: startAll, isLoading: isStartingAll } = useStartAllServices();
-  const { mutate: stopAll, isLoading: isStoppingAll } = useStopAllServices();
-
-  // Listen for health check events from backend
-  useEffect(() => {
-    const setup = async () => {
-      const unlisten = await listen<{ id: string; status: string }>('envora://service-status', () => {
-        mutate();
-      });
-      return unlisten;
-    };
-    let unlisten: (() => void) | undefined;
-    setup().then(fn => { unlisten = fn; });
-    return () => { unlisten?.(); };
-  }, [mutate]);
-
-  // Auto-refresh service list every 5 seconds
-  useEffect(() => {
-    const interval = setInterval(() => mutate(), 5000);
-    return () => clearInterval(interval);
-  }, [mutate]);
-
-  const handleStartAll = async () => {
-    setStartAllError('');
-    const results = await startAll({});
-    const errors = results
-      .filter((service) => service.status === 'error' && service.error)
-      .map((service) => `${service.name}: ${service.error}`);
-    if (errors.length > 0) {
-      setStartAllError(errors.join('\n\n'));
-    }
-    mutate();
-  };
-
-  const handleStopAll = async () => {
-    setStartAllError('');
-    await stopAll({});
-    mutate();
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">仪表盘</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleStartAll} disabled={isStartingAll}>
-            <Power className="h-4 w-4 mr-2" />全部启动
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleStopAll} disabled={isStoppingAll}>
-            <PowerOff className="h-4 w-4 mr-2" />全部停止
-          </Button>
-        </div>
-      </div>
-
-      {startAllError && (
-        <pre className="rounded-md border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-600 whitespace-pre-wrap">
-          {startAllError}
-        </pre>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <ServiceCard serviceType="php-fpm" title="PHP-FPM" />
-        <ServiceCard serviceType="nginx" title="Nginx" />
-        <ServiceCard serviceType="mysql" title="MySQL" />
-      </div>
-    </div>
-  );
-}
+};

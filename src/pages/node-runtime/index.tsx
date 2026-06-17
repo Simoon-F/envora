@@ -1,8 +1,8 @@
 import { Badge } from '@/components/ui/badge';
-import { NodeDetail } from '@/components/runtime/node-detail';
+import { NodeDetail } from './components/node-detail';
 import { useDefaultVersion, useInstalledVersions } from '@/hooks/use-runtimes';
 
-export function NodeRuntime() {
+export const NodeRuntime = () => {
   const { data: installed } = useInstalledVersions('node');
   const { data: defaultVersion } = useDefaultVersion('node');
   const currentVersion = defaultVersion || installed?.[0]?.version || '';
@@ -18,4 +18,4 @@ export function NodeRuntime() {
       <NodeDetail version={currentVersion || 'latest'} />
     </div>
   );
-}
+};
