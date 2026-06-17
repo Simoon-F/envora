@@ -33,6 +33,7 @@ jobs:
       version: ${{ steps.release-version.outputs.version }}
       tag: ${{ steps.release-version.outputs.tag }}
       sha: ${{ steps.commit.outputs.sha }}
+      macos_signing_available: ${{ steps.macos_signing.outputs.available }}
 
     steps:
       - name: Checkout
@@ -154,6 +155,42 @@ jobs:
           }
           NODE
 
+      - name: Detect macOS signing secrets
+        id: macos_signing
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=()
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [[ -z "${!name}" ]]; then
+              missing+=("$name")
+            fi
+          done
+
+          if (( ${#missing[@]} > 0 )); then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### macOS release assets"
+              echo
+              echo "Skipping macOS DMG build because these signing/notarization secrets are missing:"
+              for name in "${missing[@]}"; do
+                echo "- \`$name\`"
+              done
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "### macOS release assets"
+              echo
+              echo "macOS signing and notarization secrets are present. DMG assets will be signed, notarized, and uploaded."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Commit version bump
         id: commit
         env:
@@ -201,9 +238,10 @@ jobs:
 
           gh release create "${args[@]}"
 
-  publish:
+  publish-macos:
     name: Build ${{ matrix.name }}
     needs: prepare
+    if: needs.prepare.outputs.macos_signing_available == 'true'
     permissions:
       contents: write
     strategy:
@@ -211,15 +249,10 @@ jobs:
       matrix:
         include:
           - name: macOS Apple Silicon
-            platform: macos-latest
             args: --target aarch64-apple-darwin
           - name: macOS Intel
-            platform: macos-latest
             args: --target x86_64-apple-darwin
-          - name: Windows x64
-            platform: windows-latest
-            args: ""
-    runs-on: ${{ matrix.platform }}
+    runs-on: macos-latest
 
     steps:
       - name: Checkout release commit
@@ -239,7 +272,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Cache Rust
         uses: swatinem/rust-cache@v2
@@ -248,29 +281,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Validate macOS signing secrets
-        if: matrix.platform == 'macos-latest'
-        shell: bash
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          missing=()
-          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
-            if [[ -z "${!name}" ]]; then
-              missing+=("$name")
-            fi
-          done
-
-          if (( ${#missing[@]} > 0 )); then
-            echo "Missing macOS signing/notarization secrets: ${missing[*]}"
-            echo "Configure these repository secrets before publishing macOS DMG assets."
-            exit 1
-          fi
 
       - name: Build and upload release assets
         uses: tauri-apps/tauri-action@v0
@@ -289,3 +299,46 @@ jobs:
           releaseDraft: ${{ inputs.draft }}
           prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
+
+  publish-windows:
+    name: Build Windows x64
+    needs: prepare
+    permissions:
+      contents: write
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and upload release assets
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: Envora ${{ needs.prepare.outputs.tag }}
+          releaseDraft: ${{ inputs.draft }}
+          prerelease: ${{ inputs.prerelease }}
