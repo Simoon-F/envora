@@ -1,6 +1,6 @@
 [package]
 name = "envora"
-version = "0.1.4"
+version = "0.1.5"
 description = "A Tauri App"
 authors = ["SIMON FENG <simoon.feng@gmail.com>"]
 edition = "2021"
