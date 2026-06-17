@@ -1,6 +1,11 @@
 import { useTauriSwr } from './use-swr';
 import { useTauriMutation } from './use-mutation';
-import type { RuntimeVersion, VersionInfo } from '@/types/runtime';
+import type {
+  NodePackageManagerName,
+  NodePackageManagerStatus,
+  RuntimeVersion,
+  VersionInfo,
+} from '@/types/runtime';
 import type { OperationInfo } from '@/stores/operations';
 
 export function useInstalledVersions(runtime: string) {
@@ -45,5 +50,31 @@ export function useUninstallVersion() {
 export function useSwitchDefault() {
   return useTauriMutation<void, { runtime: string; version: string }>(
     'switch_default_version'
+  );
+}
+
+export function useNodePackageManagerStatus(projectDir?: string | null) {
+  return useTauriSwr<NodePackageManagerStatus>(
+    'get_node_package_manager_status',
+    { projectDir: projectDir || null }
+  );
+}
+
+export function useSetCorepackEnabled() {
+  return useTauriMutation<NodePackageManagerStatus, { enabled: boolean }>(
+    'set_corepack_enabled'
+  );
+}
+
+export function useInstallNodePackageManager() {
+  return useTauriMutation<
+    NodePackageManagerStatus,
+    { manager: NodePackageManagerName; version?: string | null }
+  >('install_node_package_manager');
+}
+
+export function useInstallProjectPackageManager() {
+  return useTauriMutation<NodePackageManagerStatus, { projectDir: string }>(
+    'install_project_package_manager'
   );
 }

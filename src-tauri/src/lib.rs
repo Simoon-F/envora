@@ -50,6 +50,10 @@ pub fn run() {
             commands::runtime::uninstall_version,
             commands::runtime::switch_default_version,
             commands::runtime::get_default_version,
+            commands::runtime::get_node_package_manager_status,
+            commands::runtime::set_corepack_enabled,
+            commands::runtime::install_node_package_manager,
+            commands::runtime::install_project_package_manager,
             // Services
             commands::service::get_all_services,
             commands::service::start_service,

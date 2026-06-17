@@ -60,9 +60,9 @@ reports are valuable.
 | MySQL | Official MySQL Community Server archives |
 | Java | Eclipse Temurin JDKs via the Adoptium API, with `JAVA_HOME` support |
 | Node.js | Official Node.js binary archives, including `node`, `npm`, `npx`, and `corepack` |
+| npm, pnpm, yarn | npm follows Node.js; pnpm and Yarn are enabled, activated, and installed per project through Corepack |
 | Composer | Envora-managed Composer plus system Composer detection |
 | Rust, Go | Planned |
-| npm, pnpm, yarn | Planned |
 
 Runtime release packaging notes live in
 [docs/release-runtimes.md](docs/release-runtimes.md).

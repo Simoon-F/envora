@@ -17,6 +17,32 @@ export interface RuntimeVersion {
   is_default: boolean;
 }
 
+export type NodePackageManagerName = 'pnpm' | 'yarn';
+
+export interface NodeToolStatus {
+  name: string;
+  version: string | null;
+  path: string | null;
+  available: boolean;
+}
+
+export interface ProjectPackageManager {
+  name: string;
+  version: string | null;
+  raw: string;
+  package_json_path: string;
+}
+
+export interface NodePackageManagerStatus {
+  node_version: string | null;
+  default_node_version: string | null;
+  bin_dir: string;
+  corepack_enabled: boolean;
+  tools: NodeToolStatus[];
+  project_dir: string | null;
+  project_package_manager: ProjectPackageManager | null;
+}
+
 export type BuildStage =
   | 'downloading'
   | 'extracting'

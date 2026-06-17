@@ -45,9 +45,9 @@ Envora 目前处于早期开发阶段。
 | MySQL | 使用 MySQL Community Server 官方归档包 |
 | Java | 使用 Eclipse Temurin / Adoptium API 安装 JDK，并设置 `JAVA_HOME` |
 | Node.js | 使用 Node.js 官方二进制归档包，包含 `node`、`npm`、`npx` 和 `corepack` |
+| npm、pnpm、yarn | npm 随 Node.js 管理；pnpm 和 Yarn 通过 Corepack 启用、激活和按项目安装 |
 | Composer | Envora 托管 Composer，并检测系统 Composer |
 | Rust、Go | 计划中 |
-| npm、pnpm、yarn | 计划中 |
 
 运行时发布和打包说明见
 [docs/release-runtimes.md](docs/release-runtimes.md)。
