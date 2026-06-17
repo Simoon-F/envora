@@ -277,14 +277,18 @@ pub async fn get_node_package_manager_status(
     state: State<'_, AppState>,
     project_dir: Option<String>,
 ) -> Result<NodePackageManagerStatus, AppError> {
-    let settings = state.settings.lock().await;
-    let provider = factory::create_provider(RuntimeType::Node, settings.get());
+    let settings = {
+        let settings = state.settings.lock().await;
+        settings.get().clone()
+    };
+    let provider = factory::create_provider(RuntimeType::Node, &settings);
     let default_node_version = provider.get_default()?;
-    let bin_dir = settings.get().bin_dir.clone();
+    let bin_dir = settings.bin_dir.clone();
     let node_bin_dir = default_node_version
         .as_ref()
-        .map(|version| node_install_bin_dir(&settings.get().runtime_dir, version));
+        .map(|version| node_install_bin_dir(&settings.runtime_dir, version));
     let env_path = build_node_path(&bin_dir, node_bin_dir.as_deref());
+    let status_cwd = node_tool_status_dir(&settings.data_dir)?;
 
     let tools = ["node", "npm", "npx", "corepack", "yarn", "pnpm"]
         .into_iter()
@@ -292,7 +296,7 @@ pub async fn get_node_package_manager_status(
             let path = find_tool_path(&bin_dir, node_bin_dir.as_deref(), tool);
             let version = path
                 .as_ref()
-                .and_then(|path| command_version(path, &env_path, None).ok());
+                .and_then(|path| command_version(path, &env_path, Some(&status_cwd)).ok());
 
             NodeToolStatus {
                 name: tool.to_string(),
@@ -481,6 +485,12 @@ fn node_install_bin_dir(runtime_dir: &Path, version: &str) -> PathBuf {
     {
         runtime_dir.join("node").join(version).join("bin")
     }
+}
+
+fn node_tool_status_dir(data_dir: &Path) -> Result<PathBuf, AppError> {
+    let path = data_dir.join(".corepack-status");
+    std::fs::create_dir_all(&path)?;
+    Ok(path)
 }
 
 fn tool_file_name(tool: &str) -> String {
