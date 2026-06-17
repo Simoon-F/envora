@@ -177,10 +177,12 @@ jobs:
             {
               echo "### macOS release assets"
               echo
-              echo "Skipping macOS DMG build because these signing/notarization secrets are missing:"
+              echo "Skipping signed and notarized macOS builds because these signing/notarization secrets are missing:"
               for name in "${missing[@]}"; do
                 echo "- \`$name\`"
               done
+              echo
+              echo "An unsigned macOS Intel DMG will still be built for compatibility."
             } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "available=true" >> "$GITHUB_OUTPUT"
@@ -299,6 +301,53 @@ jobs:
           releaseDraft: ${{ inputs.draft }}
           prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
+
+  publish-macos-x64-unsigned:
+    name: Build macOS Intel unsigned
+    needs: prepare
+    if: needs.prepare.outputs.macos_signing_available != 'true'
+    permissions:
+      contents: write
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and upload release assets
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: Envora ${{ needs.prepare.outputs.tag }}
+          releaseDraft: ${{ inputs.draft }}
+          prerelease: ${{ inputs.prerelease }}
+          args: --target x86_64-apple-darwin
 
   publish-windows:
     name: Build Windows x64
