@@ -11,7 +11,7 @@ import {
 import { tauriInvoke } from '@/lib/tauri';
 import { type OperationInfo, useOperationsStore } from '@/stores/operations';
 
-function operationName(operation: OperationInfo) {
+const operationName = (operation: OperationInfo) => {
   if (operation.kind === 'runtime_install') {
     return `${operation.target.runtime || '运行时'} ${operation.target.version || ''}`.trim();
   }
@@ -19,9 +19,9 @@ function operationName(operation: OperationInfo) {
     return operation.target.tool;
   }
   return operation.kind;
-}
+};
 
-function statusText(operation: OperationInfo) {
+const statusText = (operation: OperationInfo) => {
   switch (operation.status) {
     case 'queued':
       return '等待中';
@@ -34,16 +34,16 @@ function statusText(operation: OperationInfo) {
     case 'cancelled':
       return '已取消';
   }
-}
+};
 
-function OperationIcon({ operation }: { operation: OperationInfo }) {
+const OperationIcon = ({ operation }: { operation: OperationInfo }) => {
   if (operation.status === 'completed') return <CheckCircle2 className="h-4 w-4 text-green-600" />;
   if (operation.status === 'failed') return <XCircle className="h-4 w-4 text-destructive" />;
   if (operation.status === 'running') return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
   return <Activity className="h-4 w-4 text-muted-foreground" />;
-}
+};
 
-function OperationRow({ operation }: { operation: OperationInfo }) {
+const OperationRow = ({ operation }: { operation: OperationInfo }) => {
   const remove = useOperationsStore((state) => state.remove);
 
   const clear = async () => {
@@ -81,9 +81,9 @@ function OperationRow({ operation }: { operation: OperationInfo }) {
       </div>
     </div>
   );
-}
+};
 
-export function OperationCenter() {
+export const OperationCenter = () => {
   const operationsById = useOperationsStore((state) => state.operations);
   const ordered = useMemo(
     () => Object.values(operationsById).sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
@@ -132,4 +132,4 @@ export function OperationCenter() {
       </SheetContent>
     </Sheet>
   );
-}
+};
