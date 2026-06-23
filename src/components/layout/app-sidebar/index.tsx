@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Package, PackageCheck, Settings, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { APP_VERSION } from '@/lib/version';
 import { OperationCenter } from '../operation-center';
 
 const navItems = [
@@ -45,7 +46,7 @@ export const Sidebar = () => {
       </div>
 
       <div className="px-4 pb-4 text-xs text-muted-foreground">
-        Envora v0.1.0
+        Envora v{APP_VERSION}
       </div>
     </aside>
   );

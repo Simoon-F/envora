@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { APP_VERSION } from '@/lib/version';
 
 export const AboutSettings = () => {
   return (
@@ -8,7 +9,7 @@ export const AboutSettings = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-2 text-sm text-muted-foreground">
-          <p>Envora v0.1.0</p>
+          <p>Envora v{APP_VERSION}</p>
           <p>统一的开发环境管理平台。</p>
         </div>
       </CardContent>
