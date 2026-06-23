@@ -211,9 +211,9 @@ jobs:
       matrix:
         include:
           - name: macOS Apple Silicon
-            args: --target aarch64-apple-darwin --bundles dmg --no-sign
+            args: --target aarch64-apple-darwin --bundles dmg
           - name: macOS Intel
-            args: --target x86_64-apple-darwin --bundles dmg --no-sign
+            args: --target x86_64-apple-darwin --bundles dmg
     runs-on: macos-latest
 
     steps:
