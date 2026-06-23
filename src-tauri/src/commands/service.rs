@@ -8,7 +8,9 @@ use std::process::Command;
 use tauri::State;
 
 use crate::core::{AppError, ServiceStatus};
-use crate::sidecar::manager::{cleanup_service_port_listeners, SidecarConfig};
+use crate::sidecar::manager::{
+    cleanup_service_port_listeners, is_process_alive, ProcessInfo, SidecarConfig,
+};
 use crate::state::AppState;
 
 #[derive(serde::Serialize)]
@@ -193,6 +195,10 @@ pub async fn start_service(
         _ => return Err(AppError::ServiceNotFound(service_type)),
     };
 
+    if let Some(info) = prepare_service_start(&state, &service_type, &config, port).await? {
+        return Ok(info);
+    }
+
     ensure_port_available(&service_type, port)?;
 
     let mut sidecar = state.sidecar.lock().await;
@@ -290,6 +296,26 @@ pub async fn start_all_services(state: State<'_, AppState>) -> Result<Vec<Servic
         // Build service config
         let (config, port) =
             build_service_config(service_type, &version, &runtime_dir, &logs_dir, &bin_dir)?;
+        match prepare_service_start(&state, service_type, &config, port).await {
+            Ok(Some(info)) => {
+                results.push(info);
+                continue;
+            }
+            Ok(None) => {}
+            Err(e) => {
+                results.push(ServiceInfo {
+                    id: format!("{}-{}", service_type, version),
+                    name: service_type.to_string(),
+                    status: ServiceStatus::Error,
+                    pid: None,
+                    port: Some(port),
+                    error: Some(e.to_string()),
+                });
+                tracing::error!("Failed to prepare {}: {}", service_type, e);
+                continue;
+            }
+        }
+
         if let Err(e) = ensure_port_available(service_type, port) {
             results.push(ServiceInfo {
                 id: format!("{}-{}", service_type, version),
@@ -418,6 +444,199 @@ fn build_service_config(
         )),
         _ => Err(AppError::ServiceNotFound(service_type.to_string())),
     }
+}
+
+async fn prepare_service_start(
+    state: &State<'_, AppState>,
+    service_type: &str,
+    config: &SidecarConfig,
+    port: u16,
+) -> Result<Option<ServiceInfo>, AppError> {
+    {
+        let mut sidecar = state.sidecar.lock().await;
+        sidecar.health_check_all();
+
+        if let Some(info) = sidecar
+            .get_by_type(service_type)
+            .into_iter()
+            .find(|info| {
+                info.status == ServiceStatus::Running
+                    && info.pid.map(is_process_alive).unwrap_or(false)
+            })
+            .cloned()
+        {
+            return Ok(Some(service_info_from_process(info, port)));
+        }
+    }
+
+    if service_type == "mysql" {
+        if let Some(pid) = find_running_mysql_for_config(config)? {
+            let mut sidecar = state.sidecar.lock().await;
+            let info = sidecar.adopt_external_process(config.clone(), pid);
+            return Ok(Some(service_info_from_process(info, port)));
+        }
+
+        cleanup_stale_mysql_startup_files(config)?;
+    }
+
+    Ok(None)
+}
+
+fn service_info_from_process(info: ProcessInfo, port: u16) -> ServiceInfo {
+    ServiceInfo {
+        id: info.config.id,
+        name: info.config.name,
+        status: info.status,
+        pid: info.pid,
+        port: Some(port),
+        error: None,
+    }
+}
+
+fn find_running_mysql_for_config(config: &SidecarConfig) -> Result<Option<u32>, AppError> {
+    #[cfg(not(unix))]
+    {
+        let _ = config;
+        Ok(None)
+    }
+
+    #[cfg(unix)]
+    {
+        let install_dir = match mysql_install_dir(config) {
+            Some(dir) => dir,
+            None => return Ok(None),
+        };
+
+        let mut candidates = Vec::new();
+        if let Some(pid) = read_pid_file(&install_dir.join("mysql.pid")) {
+            candidates.push(pid);
+        }
+
+        candidates.extend(lsof_file_pids(&install_dir.join("data").join("ibdata1")));
+        candidates.extend(ps_mysql_pids_for_install_dir(&install_dir)?);
+        candidates.sort_unstable();
+        candidates.dedup();
+
+        for pid in candidates {
+            if pid == std::process::id() || !is_process_alive(pid) {
+                continue;
+            }
+
+            if mysql_process_matches(pid, config, &install_dir)? {
+                return Ok(Some(pid));
+            }
+        }
+
+        Ok(None)
+    }
+}
+
+fn cleanup_stale_mysql_startup_files(config: &SidecarConfig) -> Result<(), AppError> {
+    let Some(install_dir) = mysql_install_dir(config) else {
+        return Ok(());
+    };
+
+    let pid_file = install_dir.join("mysql.pid");
+    if let Some(pid) = read_pid_file(&pid_file) {
+        if is_process_alive(pid) && mysql_process_matches(pid, config, &install_dir)? {
+            return Ok(());
+        }
+    }
+
+    for path in [
+        install_dir.join("mysql.sock"),
+        install_dir.join("mysql.sock.lock"),
+        pid_file,
+    ] {
+        match std::fs::remove_file(&path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == ErrorKind::NotFound => {}
+            Err(error) => return Err(AppError::Io(error)),
+        }
+    }
+
+    Ok(())
+}
+
+fn mysql_install_dir(config: &SidecarConfig) -> Option<PathBuf> {
+    config
+        .binary_path
+        .parent()
+        .and_then(Path::parent)
+        .map(Path::to_path_buf)
+}
+
+fn read_pid_file(path: &Path) -> Option<u32> {
+    std::fs::read_to_string(path).ok()?.trim().parse().ok()
+}
+
+#[cfg(unix)]
+fn lsof_file_pids(path: &Path) -> Vec<u32> {
+    let output = match Command::new("lsof").arg("-t").arg(path).output() {
+        Ok(output) if output.status.success() => output,
+        _ => return Vec::new(),
+    };
+
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| line.trim().parse::<u32>().ok())
+        .collect()
+}
+
+#[cfg(unix)]
+fn ps_mysql_pids_for_install_dir(install_dir: &Path) -> Result<Vec<u32>, AppError> {
+    let output = Command::new("ps")
+        .args(["-axo", "pid=,command="])
+        .output()?;
+
+    if !output.status.success() {
+        return Ok(Vec::new());
+    }
+
+    let install_dir_text = install_dir.display().to_string();
+    Ok(String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim_start();
+            let (pid_text, command) = trimmed.split_once(char::is_whitespace)?;
+            if command.contains("mysqld") && command.contains(&install_dir_text) {
+                pid_text.parse::<u32>().ok()
+            } else {
+                None
+            }
+        })
+        .collect())
+}
+
+#[cfg(unix)]
+fn mysql_process_matches(
+    pid: u32,
+    config: &SidecarConfig,
+    install_dir: &Path,
+) -> Result<bool, AppError> {
+    let output = Command::new("ps")
+        .args(["-p", &pid.to_string(), "-o", "command="])
+        .output()?;
+
+    if !output.status.success() {
+        return Ok(false);
+    }
+
+    let command = String::from_utf8_lossy(&output.stdout);
+    let install_dir_text = install_dir.display().to_string();
+    let binary_text = config.binary_path.display().to_string();
+
+    Ok(command.contains("mysqld")
+        && (command.contains(&binary_text) || command.contains(&install_dir_text)))
+}
+
+#[cfg(not(unix))]
+fn mysql_process_matches(
+    _pid: u32,
+    _config: &SidecarConfig,
+    _install_dir: &Path,
+) -> Result<bool, AppError> {
+    Ok(false)
 }
 
 #[tauri::command]

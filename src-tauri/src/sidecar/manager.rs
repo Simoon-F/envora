@@ -179,6 +179,35 @@ impl SidecarManager {
         Ok(info)
     }
 
+    /// Track an already-running process without spawning a duplicate.
+    pub fn adopt_external_process(&mut self, config: SidecarConfig, pid: u32) -> ProcessInfo {
+        if let Some(info) = self
+            .processes
+            .values_mut()
+            .find(|info| info.config.id == config.id)
+        {
+            info.config = config;
+            info.pid = Some(pid);
+            info.status = ServiceStatus::Running;
+            if info.started_at.is_none() {
+                info.started_at = Some(chrono::Local::now().to_rfc3339());
+            }
+            return info.clone();
+        }
+
+        let uuid = uuid::Uuid::new_v4().to_string();
+        let info = ProcessInfo {
+            uuid: uuid.clone(),
+            config,
+            pid: Some(pid),
+            status: ServiceStatus::Running,
+            started_at: Some(chrono::Local::now().to_rfc3339()),
+        };
+
+        self.processes.insert(uuid, info.clone());
+        info
+    }
+
     /// Stop a process by UUID
     pub async fn stop(&mut self, uuid: &str, force: bool) -> Result<(), AppError> {
         let info = self
