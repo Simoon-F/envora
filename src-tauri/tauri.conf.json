@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "envora",
+  "productName": "Envora",
   "version": "0.1.6",
   "identifier": "com.simonf.envora",
   "build": {
