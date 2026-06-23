@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar-layout';
 import { Dashboard } from '@/pages/dashboard';
 import { Runtimes } from '@/pages/runtimes';
@@ -10,8 +11,15 @@ import { NodeRuntime } from '@/pages/node-runtime';
 import { Composer } from '@/pages/composer';
 import { Settings } from '@/pages/settings';
 import { OperationEvents } from '@/components/runtime/operation-events';
+import { useI18nStore } from '@/i18n/store';
 
 const App = () => {
+  const language = useI18nStore((state) => state.language);
+
+  useEffect(() => {
+    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+  }, [language]);
+
   return (
     <BrowserRouter>
       <OperationEvents />

@@ -86,7 +86,7 @@ export const useOperationsStore = create<OperationsStore>((set) => ({
             },
             status,
             stage: payload.stage || current?.stage || 'running',
-            message: payload.message || current?.message || '处理中...',
+            message: payload.message || current?.message || 'Processing...',
             percent,
             error: null,
             started_at: current?.started_at || timestamp,

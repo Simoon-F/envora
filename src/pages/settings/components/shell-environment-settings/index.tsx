@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { useTranslation } from '@/i18n/use-translation';
 import type { ShellEnvironmentStatus } from '@/types/settings';
 import { CheckCircle2, Loader2, Terminal } from 'lucide-react';
 
@@ -18,41 +19,43 @@ export const ShellEnvironmentSettings = ({
   isInstalling,
   onInstall,
 }: ShellEnvironmentSettingsProps) => {
+  const { t } = useTranslation();
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Terminal className="h-4 w-4" />
-          Shell 环境
+          {t('Settings', 'ShellEnvironment')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Badge variant={shellEnv?.is_installed ? 'default' : 'secondary'}>
-              {shellEnv?.is_installed ? '已写入' : '未写入'}
+              {shellEnv?.is_installed ? t('Settings', 'Installed') : t('Settings', 'NotInstalled')}
             </Badge>
-            <span className="text-xs text-muted-foreground">新开终端后生效</span>
+            <span className="text-xs text-muted-foreground">{t('Settings', 'TakesEffectInNewTerminal')}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <Badge variant={shellEnv?.profile_installed ? 'outline' : 'secondary'}>
-              Profile {shellEnv?.profile_installed ? '已写入' : '未写入'}
+              Profile {shellEnv?.profile_installed ? t('Settings', 'Installed') : t('Settings', 'NotInstalled')}
             </Badge>
             <Badge variant={shellEnv?.user_path_installed ? 'outline' : 'secondary'}>
-              PATH {shellEnv?.user_path_installed ? '已写入' : '未写入'}
+              PATH {shellEnv?.user_path_installed ? t('Settings', 'Installed') : t('Settings', 'NotInstalled')}
             </Badge>
           </div>
 
           <div>
-            <Label className="text-xs text-muted-foreground">命令目录</Label>
+            <Label className="text-xs text-muted-foreground">{t('Settings', 'CommandDirectory')}</Label>
             <p className="mt-1 break-all font-mono text-sm">{shellEnv?.bin_dir ?? binDir ?? '-'}</p>
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">环境脚本</Label>
+            <Label className="text-xs text-muted-foreground">{t('Settings', 'EnvironmentScript')}</Label>
             <p className="mt-1 break-all font-mono text-sm">{shellEnv?.env_script ?? '-'}</p>
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Shell 配置文件</Label>
+            <Label className="text-xs text-muted-foreground">{t('Settings', 'ShellProfile')}</Label>
             <p className="mt-1 break-all font-mono text-sm">{shellEnv?.shell_profile ?? '-'}</p>
           </div>
 
@@ -62,7 +65,9 @@ export const ShellEnvironmentSettings = ({
             ) : (
               <CheckCircle2 className="mr-2 h-4 w-4" />
             )}
-            {shellEnv?.is_installed ? '重新写入 Shell 环境' : '写入 Shell 环境'}
+            {shellEnv?.is_installed
+              ? t('Settings', 'ReinstallShellEnvironment')
+              : t('Settings', 'InstallShellEnvironment')}
           </Button>
         </div>
       </CardContent>

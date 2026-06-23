@@ -12,6 +12,7 @@ import {
   useStopService,
 } from '@/hooks/use-services';
 import { useDefaultVersion } from '@/hooks/use-runtimes';
+import { useTranslation } from '@/i18n/use-translation';
 import type { ServiceStatus } from '@/types/service';
 import { FileText, Play, RotateCw, Square, Trash2 } from 'lucide-react';
 
@@ -30,14 +31,14 @@ const statusColors: Record<ServiceStatus, string> = {
   unknown: 'bg-gray-500',
 };
 
-const statusLabels: Record<ServiceStatus, string> = {
-  running: '运行中',
-  stopped: '已停止',
-  error: '错误',
-  starting: '启动中...',
-  stopping: '停止中...',
-  unknown: '未知',
-};
+const statusLabelKeys = {
+  running: 'Running',
+  stopped: 'Stopped',
+  error: 'Error',
+  starting: 'Starting',
+  stopping: 'Stopping',
+  unknown: 'Unknown',
+} as const satisfies Record<ServiceStatus, string>;
 
 interface ServiceCardProps {
   serviceType: string;
@@ -45,6 +46,7 @@ interface ServiceCardProps {
 }
 
 export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
+  const { t } = useTranslation();
   const [logOpen, setLogOpen] = useState(false);
   const [actionError, setActionError] = useState('');
   const { data: services, mutate } = useAllServices();
@@ -109,15 +111,15 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
           <CardTitle className="text-sm font-medium">{title}</CardTitle>
           <Badge variant={status === 'running' ? 'default' : 'secondary'}>
             <span className={`mr-2 h-2 w-2 rounded-full ${statusColors[status]}`} />
-            {statusLabels[status]}
+            {t('Dashboard', statusLabelKeys[status])}
           </Badge>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             <div className="text-sm text-muted-foreground">
               {defaultVersion && <span className="mr-3">v{defaultVersion}</span>}
-              {service?.pid ? `PID: ${service.pid}` : '未运行'}
-              {service?.port ? ` • 端口: ${service.port}` : ''}
+              {service?.pid ? `PID: ${service.pid}` : t('Dashboard', 'NotRunning')}
+              {service?.port ? ` • ${t('Dashboard', 'Port')}: ${service.port}` : ''}
             </div>
             {actionError && <p className="rounded-md bg-red-500/10 p-2 text-xs text-red-600">{actionError}</p>}
             <div className="flex flex-wrap gap-2">
@@ -125,17 +127,17 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
                 <>
                   <Button variant="outline" size="sm" onClick={handleStop} disabled={isStopping}>
                     <Square className="mr-1 h-3 w-3" />
-                    停止
+                    {t('Dashboard', 'Stop')}
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleRestart} disabled={isRestarting}>
                     <RotateCw className="mr-1 h-3 w-3" />
-                    重启
+                    {t('Dashboard', 'Restart')}
                   </Button>
                 </>
               ) : (
                 <Button size="sm" onClick={handleStart} disabled={isStarting || !defaultVersion}>
                   <Play className="mr-1 h-3 w-3" />
-                  启动
+                  {t('Dashboard', 'Start')}
                 </Button>
               )}
               <Button
@@ -148,7 +150,7 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
                 disabled={!defaultVersion}
               >
                 <FileText className="mr-1 h-3 w-3" />
-                日志
+                {t('Common', 'Logs')}
               </Button>
             </div>
           </div>
@@ -158,17 +160,17 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
       <Dialog open={logOpen} onOpenChange={setLogOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader className="pr-10">
-            <DialogTitle>{title} 日志</DialogTitle>
+            <DialogTitle>{t('Dashboard', 'ServiceLogs', { service: title })}</DialogTitle>
           </DialogHeader>
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={handleClearLog} disabled={isClearingLog || !defaultVersion}>
               <Trash2 className="mr-1 h-3 w-3" />
-              清空
+              {t('Dashboard', 'ClearLogs')}
             </Button>
           </div>
           <div className="max-h-[60vh] space-y-3 overflow-auto pr-1">
             {isLogLoading ? (
-              <div className="rounded-md border bg-muted p-3 text-xs text-muted-foreground">加载中...</div>
+              <div className="rounded-md border bg-muted p-3 text-xs text-muted-foreground">{t('Common', 'Loading')}</div>
             ) : serviceLog?.length ? (
               serviceLog.map((section) => (
                 <section key={section.path} className="overflow-hidden rounded-md border">
@@ -178,16 +180,16 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
                       <div className="truncate text-[11px] text-muted-foreground">{section.path}</div>
                     </div>
                     <Badge variant={section.exists ? 'outline' : 'secondary'} className="shrink-0 text-[11px]">
-                      {section.exists ? '存在' : '缺失'}
+                      {section.exists ? t('Dashboard', 'Exists') : t('Dashboard', 'Missing')}
                     </Badge>
                   </div>
                   <pre className="max-h-56 overflow-auto bg-background p-3 text-xs whitespace-pre-wrap">
-                    {section.content || '暂无日志'}
+                    {section.content || t('Dashboard', 'NoLogs')}
                   </pre>
                 </section>
               ))
             ) : (
-              <div className="rounded-md border bg-muted p-3 text-xs text-muted-foreground">暂无日志</div>
+              <div className="rounded-md border bg-muted p-3 text-xs text-muted-foreground">{t('Dashboard', 'NoLogs')}</div>
             )}
           </div>
         </DialogContent>

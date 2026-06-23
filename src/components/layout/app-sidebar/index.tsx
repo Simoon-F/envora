@@ -2,16 +2,19 @@ import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Package, PackageCheck, Settings, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { APP_VERSION } from '@/lib/version';
+import { useTranslation } from '@/i18n/use-translation';
 import { OperationCenter } from '../operation-center';
 
 const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: '仪表盘' },
-  { to: '/runtimes', icon: Package, label: '运行环境' },
-  { to: '/composer', icon: PackageCheck, label: 'Composer' },
-  { to: '/settings', icon: Settings, label: '设置' },
-];
+  { to: '/dashboard', icon: LayoutDashboard, labelKey: 'Dashboard' },
+  { to: '/runtimes', icon: Package, labelKey: 'Runtimes' },
+  { to: '/composer', icon: PackageCheck, labelKey: 'Composer' },
+  { to: '/settings', icon: Settings, labelKey: 'Settings' },
+] as const;
 
 export const Sidebar = () => {
+  const { t } = useTranslation();
+
   return (
     <aside className="w-56 border-r bg-muted/30 flex flex-col">
       {/* Logo */}
@@ -22,7 +25,7 @@ export const Sidebar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 p-2 space-y-1">
-        {navItems.map(({ to, icon: Icon, label }) => (
+        {navItems.map(({ to, icon: Icon, labelKey }) => (
           <NavLink
             key={to}
             to={to}
@@ -36,7 +39,7 @@ export const Sidebar = () => {
             }
           >
             <Icon className="h-4 w-4" />
-            <span>{label}</span>
+            <span>{t('Layout', labelKey)}</span>
           </NavLink>
         ))}
       </nav>

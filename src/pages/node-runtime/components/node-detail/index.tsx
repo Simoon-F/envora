@@ -19,10 +19,12 @@ import {
   useSwitchDefault,
   useUninstallVersion,
 } from '@/hooks/use-runtimes';
+import { useTranslation } from '@/i18n/use-translation';
 import { useOperationsStore } from '@/stores/operations';
 import type { NodePackageManagerName, NodePackageManagerStatus, NodeToolStatus, RuntimeVersion, VersionInfo } from '@/types/runtime';
 
 const NodeVersionsTab = () => {
+  const { t } = useTranslation();
   const { data: installed, isLoading, mutate } = useInstalledVersions('node');
   const { data: available, mutate: mutateAvailable } = useAvailableVersions('node');
   const { data: defaultVersion, mutate: mutateDefault } = useDefaultVersion('node');
@@ -104,7 +106,7 @@ const NodeVersionsTab = () => {
                 {v.version === defaultVersion && (
                   <Badge>
                     <Check className="mr-1 h-3 w-3" />
-                    默认
+                    {t('Common', 'Default')}
                   </Badge>
                 )}
               </div>
@@ -112,10 +114,10 @@ const NodeVersionsTab = () => {
                 <span className="text-xs text-muted-foreground">{formatBytes(v.size)}</span>
                 {v.version !== defaultVersion && (
                   <Button variant="ghost" size="sm" onClick={() => handleSwitchDefault(v.version)}>
-                    设为默认
+                    {t('Common', 'SetDefault')}
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={() => handleUninstall(v.version)} title="卸载">
+                <Button variant="ghost" size="sm" onClick={() => handleUninstall(v.version)}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
@@ -123,7 +125,7 @@ const NodeVersionsTab = () => {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">尚未安装任何 Node.js 版本。</p>
+        <p className="text-sm text-muted-foreground">{t('RuntimeDetail', 'NoNodeVersionsInstalled')}</p>
       )}
 
       {visibleOperation && (
@@ -146,7 +148,7 @@ const NodeVersionsTab = () => {
                 className="shrink-0 text-foreground hover:underline"
                 onClick={() => removeOperation(visibleOperation.id)}
               >
-                清除
+                {t('Common', 'Clear')}
               </button>
             )}
           </div>
@@ -154,7 +156,7 @@ const NodeVersionsTab = () => {
       )}
 
       <div>
-        <h4 className="mb-2 text-sm font-medium">可安装版本</h4>
+        <h4 className="mb-2 text-sm font-medium">{t('RuntimeDetail', 'AvailableVersions')}</h4>
         <div className="space-y-1">
           {installable.map((v: VersionInfo) => (
             <button
@@ -175,7 +177,7 @@ const NodeVersionsTab = () => {
             </button>
           ))}
           {installable.length === 0 && (
-            <p className="text-sm text-muted-foreground">当前可用版本都已安装，或当前平台暂无可用包。</p>
+            <p className="text-sm text-muted-foreground">{t('RuntimeDetail', 'AllAvailableInstalledOrUnavailable')}</p>
           )}
         </div>
       </div>
@@ -184,6 +186,7 @@ const NodeVersionsTab = () => {
 };
 
 const NodeShellInfo = ({ version }: { version: string }) => {
+  const { t } = useTranslation();
   const nodeHome = `~/.envora/runtimes/node/${version || '{version}'}`;
 
   return (
@@ -191,14 +194,14 @@ const NodeShellInfo = ({ version }: { version: string }) => {
       <div className="rounded-md border p-3">
         <div className="mb-2 flex items-center gap-2 font-medium">
           <Terminal className="h-4 w-4 text-muted-foreground" />
-          Shell 环境
+          {t('RuntimeDetail', 'ShellEnvironment')}
         </div>
         <div className="space-y-1 text-muted-foreground">
           <div>
-            <code>node</code>、<code>npm</code>、<code>npx</code>、<code>corepack</code> 会链接到 Envora 的 bin 目录。
+            {t('RuntimeDetail', 'CommandDirectoryLinked', { commands: 'node, npm, npx, corepack' })}
           </div>
           <div>
-            当前默认安装目录：<code>{nodeHome}</code>
+            {t('RuntimeDetail', 'CurrentDefaultInstallDir', { path: '' })}<code>{nodeHome}</code>
           </div>
         </div>
       </div>
@@ -207,6 +210,7 @@ const NodeShellInfo = ({ version }: { version: string }) => {
 };
 
 const NodePackageManagersTab = () => {
+  const { t } = useTranslation();
   const [projectDir, setProjectDir] = useState<string | null>(null);
   const [draftProjectDir, setDraftProjectDir] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
@@ -291,17 +295,17 @@ const NodePackageManagersTab = () => {
         <>
           {!hasNode && (
             <div className="rounded-md border border-dashed p-3 text-muted-foreground">
-              先安装并设置默认 Node.js 版本后，Envora 才能管理 npm、Corepack、yarn 和 pnpm。
+              {t('RuntimeDetail', 'ToolsRequireNode')}
             </div>
           )}
 
           <div className="grid gap-2 md:grid-cols-2">
-            <ToolStatusRow tool={node} label="Node.js" note={status?.default_node_version ? `默认 ${status.default_node_version}` : '未设置默认版本'} />
-            <ToolStatusRow tool={npm} label="npm" note="随 Node.js 提供" />
-            <ToolStatusRow tool={npx} label="npx" note="随 npm 提供" />
-            <ToolStatusRow tool={corepack} label="Corepack" note={status?.corepack_enabled ? 'shims 已启用' : 'shims 未启用'} />
-            <ToolStatusRow tool={pnpm} label="pnpm" note="由 Corepack 代理" />
-            <ToolStatusRow tool={yarn} label="Yarn" note="由 Corepack 代理" />
+            <ToolStatusRow tool={node} label="Node.js" note={status?.default_node_version ? t('Common', 'DefaultValue', { value: status.default_node_version }) : t('Common', 'NotSet')} />
+            <ToolStatusRow tool={npm} label="npm" note={t('RuntimeDetail', 'UsesNode')} />
+            <ToolStatusRow tool={npx} label="npx" note={t('RuntimeDetail', 'UsesNpm')} />
+            <ToolStatusRow tool={corepack} label="Corepack" note={status?.corepack_enabled ? t('RuntimeDetail', 'ShimsEnabled') : t('RuntimeDetail', 'ShimsDisabled')} />
+            <ToolStatusRow tool={pnpm} label="pnpm" note={t('RuntimeDetail', 'UsesCorepackProxy')} />
+            <ToolStatusRow tool={yarn} label="Yarn" note={t('RuntimeDetail', 'UsesCorepackProxy')} />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -312,7 +316,7 @@ const NodePackageManagersTab = () => {
               onClick={() => handleCorepack(!status?.corepack_enabled)}
             >
               {busyAction?.startsWith('corepack') ? <Loader2 className="h-3 w-3 animate-spin" /> : <Power className="h-3 w-3" />}
-              {status?.corepack_enabled ? '关闭 Corepack' : '启用 Corepack'}
+              {status?.corepack_enabled ? t('RuntimeDetail', 'ToggleCorepackOff') : t('RuntimeDetail', 'ToggleCorepackOn')}
             </Button>
             <Button
               variant="outline"
@@ -321,7 +325,7 @@ const NodePackageManagersTab = () => {
               onClick={() => handleInstallPackageManager('pnpm', 'latest')}
             >
               {busyAction === 'pnpm-install' ? <Loader2 className="h-3 w-3 animate-spin" /> : <PackageCheck className="h-3 w-3" />}
-              激活 pnpm latest
+              {t('RuntimeDetail', 'ActivatePnpmLatest')}
             </Button>
             <Button
               variant="outline"
@@ -330,18 +334,18 @@ const NodePackageManagersTab = () => {
               onClick={() => handleInstallPackageManager('yarn', 'stable')}
             >
               {busyAction === 'yarn-install' ? <Loader2 className="h-3 w-3 animate-spin" /> : <PackageCheck className="h-3 w-3" />}
-              激活 Yarn stable
+              {t('RuntimeDetail', 'ActivateYarnStable')}
             </Button>
             <Button variant="ghost" size="sm" disabled={isBusy} onClick={refresh}>
               <RefreshCcw className="h-3 w-3" />
-              刷新
+              {t('Common', 'Refresh')}
             </Button>
           </div>
 
           <div className="space-y-3 rounded-md border p-3">
             <div className="flex flex-col gap-2 md:flex-row md:items-end">
               <div className="flex-1 space-y-1">
-                <Label htmlFor="node-project-dir">项目目录</Label>
+                <Label htmlFor="node-project-dir">{t('RuntimeDetail', 'ProjectDirectory')}</Label>
                 <Input
                   id="node-project-dir"
                   value={draftProjectDir}
@@ -357,10 +361,10 @@ const NodePackageManagersTab = () => {
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled={isBusy} onClick={chooseProjectDir}>
                   <FolderOpen className="h-3 w-3" />
-                  选择
+                  {t('Common', 'Select')}
                 </Button>
                 <Button variant="outline" size="sm" disabled={isBusy} onClick={activateProjectDir}>
-                  读取
+                  {t('RuntimeDetail', 'Read')}
                 </Button>
               </div>
             </div>
@@ -368,12 +372,12 @@ const NodePackageManagersTab = () => {
             <div className="flex flex-col gap-2 rounded-md bg-muted/40 p-3 md:flex-row md:items-center md:justify-between">
               <div className="space-y-1">
                 <div className="font-medium">
-                  {status?.project_package_manager ? status.project_package_manager.raw : '未检测到 packageManager'}
+                  {status?.project_package_manager ? status.project_package_manager.raw : t('Common', 'Missing') + ' packageManager'}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {status?.project_package_manager
                     ? status.project_package_manager.package_json_path
-                    : '在项目 package.json 中声明后，Corepack 会按项目锁定 pnpm 或 Yarn 版本。'}
+                    : t('RuntimeDetail', 'ProjectPackageManagerFallback')}
                 </div>
               </div>
               <Button
@@ -383,13 +387,13 @@ const NodePackageManagersTab = () => {
                 onClick={handleInstallProjectPackageManager}
               >
                 {busyAction === 'project-install' ? <Loader2 className="h-3 w-3 animate-spin" /> : <PackageCheck className="h-3 w-3" />}
-                安装项目声明版本
+                {t('RuntimeDetail', 'InstallProjectPackageManager')}
               </Button>
             </div>
           </div>
 
           <div className="rounded-md border p-3 text-xs text-muted-foreground">
-            <code>npm</code> 跟随当前 Node.js；<code>pnpm</code> 和 <code>yarn</code> 通过 Corepack shim 进入 Envora bin：
+            {t('RuntimeDetail', 'NpmFollowsNode')}
             <code className="ml-1">{status?.bin_dir}</code>
           </div>
         </>
@@ -399,6 +403,7 @@ const NodePackageManagersTab = () => {
 };
 
 const ToolStatusRow = ({ tool, label, note }: { tool?: NodeToolStatus; label: string; note: string }) => {
+  const { t } = useTranslation();
   return (
     <div className="flex min-h-16 items-center justify-between gap-3 rounded-md border p-3">
       <div className="min-w-0">
@@ -406,7 +411,7 @@ const ToolStatusRow = ({ tool, label, note }: { tool?: NodeToolStatus; label: st
         <div className="truncate text-xs text-muted-foreground">{note}</div>
       </div>
       <Badge variant={tool?.version ? 'default' : 'outline'} className="shrink-0 font-mono">
-        {tool?.version || '未就绪'}
+        {tool?.version || t('Common', 'NotReady')}
       </Badge>
     </div>
   );
@@ -417,19 +422,20 @@ const findTool = (status: NodePackageManagerStatus | undefined, name: string) =>
 };
 
 export const NodeDetail = ({ version }: { version: string }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('versions');
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
-        <TabsTrigger value="versions">版本</TabsTrigger>
-        <TabsTrigger value="packages">包管理器</TabsTrigger>
+        <TabsTrigger value="versions">{t('Common', 'Versions')}</TabsTrigger>
+        <TabsTrigger value="packages">{t('RuntimeDetail', 'PackageManagers')}</TabsTrigger>
         <TabsTrigger value="shell">Shell</TabsTrigger>
       </TabsList>
       <TabsContent value="versions" className="mt-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">版本</CardTitle>
+            <CardTitle className="text-base">{t('Common', 'Versions')}</CardTitle>
           </CardHeader>
           <CardContent>
             <NodeVersionsTab />
@@ -439,7 +445,7 @@ export const NodeDetail = ({ version }: { version: string }) => {
       <TabsContent value="packages" className="mt-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Node.js 包管理器</CardTitle>
+            <CardTitle className="text-base">Node.js {t('RuntimeDetail', 'PackageManagers')}</CardTitle>
           </CardHeader>
           <CardContent>
             <NodePackageManagersTab />
@@ -449,7 +455,7 @@ export const NodeDetail = ({ version }: { version: string }) => {
       <TabsContent value="shell" className="mt-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Node.js 环境</CardTitle>
+            <CardTitle className="text-base">{t('RuntimeDetail', 'Environment', { name: 'Node.js' })}</CardTitle>
           </CardHeader>
           <CardContent>
             <NodeShellInfo version={version} />

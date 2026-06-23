@@ -4,11 +4,14 @@ import { useThemeStore } from '@/stores/theme';
 import type { AppSettings, ShellEnvironmentStatus, Theme } from '@/types/settings';
 import { AboutSettings } from './components/about-settings';
 import { AppearanceSettings } from './components/appearance-settings';
+import { LanguageSettings } from './components/language-settings';
 import { PathSettings } from './components/path-settings';
 import { ShellEnvironmentSettings } from './components/shell-environment-settings';
+import { useTranslation } from '@/i18n/use-translation';
 
 export const Settings = () => {
   const { theme, setTheme } = useThemeStore();
+  const { t } = useTranslation();
   const { data: settings, isLoading } = useTauriSwr<AppSettings>('get_settings');
   const { data: shellEnv, mutate: refreshShellEnv } =
     useTauriSwr<ShellEnvironmentStatus>('get_shell_environment_status');
@@ -28,8 +31,9 @@ export const Settings = () => {
 
   return (
     <div className="max-w-2xl space-y-6 p-6">
-      <h1 className="text-2xl font-bold">设置</h1>
+      <h1 className="text-2xl font-bold">{t('Settings', 'Settings')}</h1>
       <AppearanceSettings theme={theme} onThemeChange={handleThemeChange} />
+      <LanguageSettings />
       <PathSettings settings={settings} isLoading={isLoading} />
       <ShellEnvironmentSettings
         binDir={settings?.bin_dir}

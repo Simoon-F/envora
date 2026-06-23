@@ -4,9 +4,11 @@ import { useAllServices, useStartAllServices, useStopAllServices } from '@/hooks
 import { listen } from '@tauri-apps/api/event';
 import { Loader2, Power, PowerOff } from 'lucide-react';
 import { ServiceCard } from './components/service-card';
+import { useTranslation } from '@/i18n/use-translation';
 
 export const Dashboard = () => {
   const [startAllError, setStartAllError] = useState('');
+  const { t } = useTranslation();
   const { isLoading, mutate } = useAllServices();
   const { mutate: startAll, isLoading: isStartingAll } = useStartAllServices();
   const { mutate: stopAll, isLoading: isStoppingAll } = useStopAllServices();
@@ -61,15 +63,15 @@ export const Dashboard = () => {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">仪表盘</h1>
+        <h1 className="text-2xl font-bold">{t('Dashboard', 'Dashboard')}</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleStartAll} disabled={isStartingAll}>
             <Power className="mr-2 h-4 w-4" />
-            全部启动
+            {t('Dashboard', 'StartAll')}
           </Button>
           <Button variant="outline" size="sm" onClick={handleStopAll} disabled={isStoppingAll}>
             <PowerOff className="mr-2 h-4 w-4" />
-            全部停止
+            {t('Dashboard', 'StopAll')}
           </Button>
         </div>
       </div>

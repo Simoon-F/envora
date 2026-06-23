@@ -1,15 +1,16 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { useTranslation } from '@/i18n/use-translation';
 import { cn } from '@/lib/utils';
 import type { Theme } from '@/types/settings';
 import { Monitor, Moon, Sun } from 'lucide-react';
 
-const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
-  { value: 'light', label: '浅色', icon: Sun },
-  { value: 'dark', label: '深色', icon: Moon },
-  { value: 'system', label: '跟随系统', icon: Monitor },
-];
+const themeOptions = [
+  { value: 'light', labelKey: 'Light', icon: Sun },
+  { value: 'dark', labelKey: 'Dark', icon: Moon },
+  { value: 'system', labelKey: 'System', icon: Monitor },
+] as const satisfies readonly { value: Theme; labelKey: string; icon: typeof Sun }[];
 
 interface AppearanceSettingsProps {
   theme: Theme;
@@ -17,16 +18,18 @@ interface AppearanceSettingsProps {
 }
 
 export const AppearanceSettings = ({ theme, onThemeChange }: AppearanceSettingsProps) => {
+  const { t } = useTranslation();
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">外观</CardTitle>
+        <CardTitle className="text-base">{t('Settings', 'Appearance')}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          <Label>主题</Label>
+          <Label>{t('Settings', 'Theme')}</Label>
           <div className="flex gap-2">
-            {themeOptions.map(({ value, label, icon: Icon }) => (
+            {themeOptions.map(({ value, labelKey, icon: Icon }) => (
               <Button
                 key={value}
                 variant={theme === value ? 'default' : 'outline'}
@@ -35,7 +38,7 @@ export const AppearanceSettings = ({ theme, onThemeChange }: AppearanceSettingsP
                 className={cn('flex-1', theme === value && 'ring-2 ring-primary')}
               >
                 <Icon className="mr-2 h-4 w-4" />
-                {label}
+                {t('Settings', labelKey)}
               </Button>
             ))}
           </div>

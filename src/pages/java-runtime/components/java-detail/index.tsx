@@ -12,10 +12,12 @@ import {
   useSwitchDefault,
   useUninstallVersion,
 } from '@/hooks/use-runtimes';
+import { useTranslation } from '@/i18n/use-translation';
 import { useOperationsStore } from '@/stores/operations';
 import type { RuntimeVersion, VersionInfo } from '@/types/runtime';
 
 const JavaVersionsTab = () => {
+  const { t } = useTranslation();
   const { data: installed, isLoading, mutate } = useInstalledVersions('java');
   const { data: available, mutate: mutateAvailable } = useAvailableVersions('java');
   const { data: defaultVersion, mutate: mutateDefault } = useDefaultVersion('java');
@@ -97,7 +99,7 @@ const JavaVersionsTab = () => {
                 {v.version === defaultVersion && (
                   <Badge>
                     <Check className="mr-1 h-3 w-3" />
-                    默认
+                    {t('Common', 'Default')}
                   </Badge>
                 )}
               </div>
@@ -105,10 +107,10 @@ const JavaVersionsTab = () => {
                 <span className="text-xs text-muted-foreground">{formatBytes(v.size)}</span>
                 {v.version !== defaultVersion && (
                   <Button variant="ghost" size="sm" onClick={() => handleSwitchDefault(v.version)}>
-                    设为默认
+                    {t('Common', 'SetDefault')}
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={() => handleUninstall(v.version)} title="卸载">
+                <Button variant="ghost" size="sm" onClick={() => handleUninstall(v.version)} title={t('Common', 'Installed')}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
@@ -116,7 +118,7 @@ const JavaVersionsTab = () => {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">尚未安装任何 Java 版本。</p>
+        <p className="text-sm text-muted-foreground">{t('RuntimeDetail', 'NoJavaVersionsInstalled')}</p>
       )}
 
       {visibleOperation && (
@@ -139,7 +141,7 @@ const JavaVersionsTab = () => {
                 className="shrink-0 text-foreground hover:underline"
                 onClick={() => removeOperation(visibleOperation.id)}
               >
-                清除
+                {t('Common', 'Clear')}
               </button>
             )}
           </div>
@@ -147,7 +149,7 @@ const JavaVersionsTab = () => {
       )}
 
       <div>
-        <h4 className="mb-2 text-sm font-medium">可安装版本</h4>
+        <h4 className="mb-2 text-sm font-medium">{t('RuntimeDetail', 'AvailableVersions')}</h4>
         <div className="space-y-1">
           {installable.map((v: VersionInfo) => (
             <button
@@ -168,7 +170,7 @@ const JavaVersionsTab = () => {
             </button>
           ))}
           {installable.length === 0 && (
-            <p className="text-sm text-muted-foreground">当前可用版本都已安装。</p>
+            <p className="text-sm text-muted-foreground">{t('RuntimeDetail', 'AllAvailableInstalled')}</p>
           )}
         </div>
       </div>
@@ -177,6 +179,7 @@ const JavaVersionsTab = () => {
 };
 
 const JavaShellInfo = ({ version }: { version: string }) => {
+  const { t } = useTranslation();
   const javaHome = `~/.envora/runtimes/java/${version || '{version}'}`;
 
   return (
@@ -184,14 +187,14 @@ const JavaShellInfo = ({ version }: { version: string }) => {
       <div className="rounded-md border p-3">
         <div className="mb-2 flex items-center gap-2 font-medium">
           <Terminal className="h-4 w-4 text-muted-foreground" />
-          Shell 环境
+          {t('RuntimeDetail', 'ShellEnvironment')}
         </div>
         <div className="space-y-1 text-muted-foreground">
           <div>
-            <code>java</code>、<code>javac</code>、<code>jar</code> 等命令会链接到 Envora 的 bin 目录。
+            {t('RuntimeDetail', 'CommandDirectoryLinked', { commands: 'java, javac, jar' })}
           </div>
           <div>
-            默认版本会写入 <code>JAVA_HOME</code>：<code>{javaHome}</code>
+            {t('RuntimeDetail', 'VersionWritesJavaHome', { path: '' })}<code>{javaHome}</code>
           </div>
         </div>
       </div>
@@ -200,18 +203,19 @@ const JavaShellInfo = ({ version }: { version: string }) => {
 };
 
 export const JavaDetail = ({ version }: { version: string }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('versions');
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
-        <TabsTrigger value="versions">版本</TabsTrigger>
+        <TabsTrigger value="versions">{t('Common', 'Versions')}</TabsTrigger>
         <TabsTrigger value="shell">Shell</TabsTrigger>
       </TabsList>
       <TabsContent value="versions" className="mt-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">版本</CardTitle>
+            <CardTitle className="text-base">{t('Common', 'Versions')}</CardTitle>
           </CardHeader>
           <CardContent>
             <JavaVersionsTab />
@@ -221,7 +225,7 @@ export const JavaDetail = ({ version }: { version: string }) => {
       <TabsContent value="shell" className="mt-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Java 环境</CardTitle>
+            <CardTitle className="text-base">{t('RuntimeDetail', 'Environment', { name: 'Java' })}</CardTitle>
           </CardHeader>
           <CardContent>
             <JavaShellInfo version={version} />

@@ -8,12 +8,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { useTranslation } from '@/i18n/use-translation';
 import { tauriInvoke } from '@/lib/tauri';
 import { type OperationInfo, useOperationsStore } from '@/stores/operations';
 
-const operationName = (operation: OperationInfo) => {
+const operationName = (operation: OperationInfo, runtimeLabel: string) => {
   if (operation.kind === 'runtime_install') {
-    return `${operation.target.runtime || '运行时'} ${operation.target.version || ''}`.trim();
+    return `${operation.target.runtime || runtimeLabel} ${operation.target.version || ''}`.trim();
   }
   if (operation.target.tool) {
     return operation.target.tool;
@@ -21,18 +22,18 @@ const operationName = (operation: OperationInfo) => {
   return operation.kind;
 };
 
-const statusText = (operation: OperationInfo) => {
+const statusText = (operation: OperationInfo, t: ReturnType<typeof useTranslation>['t']) => {
   switch (operation.status) {
     case 'queued':
-      return '等待中';
+      return t('Operations', 'Queued');
     case 'running':
-      return '进行中';
+      return t('Operations', 'Running');
     case 'completed':
-      return '已完成';
+      return t('Operations', 'Completed');
     case 'failed':
-      return '失败';
+      return t('Operations', 'Failed');
     case 'cancelled':
-      return '已取消';
+      return t('Operations', 'Cancelled');
   }
 };
 
@@ -44,6 +45,7 @@ const OperationIcon = ({ operation }: { operation: OperationInfo }) => {
 };
 
 const OperationRow = ({ operation }: { operation: OperationInfo }) => {
+  const { t } = useTranslation();
   const remove = useOperationsStore((state) => state.remove);
 
   const clear = async () => {
@@ -57,15 +59,15 @@ const OperationRow = ({ operation }: { operation: OperationInfo }) => {
     <div className="space-y-2 rounded-md border p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
-          <OperationIcon operation={operation} />
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium">{operationName(operation)}</div>
-            <div className="text-xs text-muted-foreground">{statusText(operation)}</div>
+            <OperationIcon operation={operation} />
+            <div className="min-w-0">
+            <div className="truncate text-sm font-medium">{operationName(operation, t('Operations', 'Runtime'))}</div>
+            <div className="text-xs text-muted-foreground">{statusText(operation, t)}</div>
           </div>
         </div>
         {operation.status !== 'running' && operation.status !== 'queued' && (
           <Button variant="ghost" size="sm" className="h-7 shrink-0 text-xs" onClick={clear}>
-            清除
+            {t('Common', 'Clear')}
           </Button>
         )}
       </div>
@@ -84,6 +86,7 @@ const OperationRow = ({ operation }: { operation: OperationInfo }) => {
 };
 
 export const OperationCenter = () => {
+  const { t } = useTranslation();
   const operationsById = useOperationsStore((state) => state.operations);
   const ordered = useMemo(
     () => Object.values(operationsById).sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
@@ -109,23 +112,25 @@ export const OperationCenter = () => {
             <ListChecks className="h-4 w-4 text-muted-foreground" />
           )}
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-medium">任务</div>
+            <div className="text-xs font-medium">{t('Operations', 'Tasks')}</div>
             <div className="truncate text-xs text-muted-foreground">
-              {latest ? `${operationName(latest)} · ${latest.percent.toFixed(0)}%` : '没有正在运行的任务'}
+              {latest
+                ? `${operationName(latest, t('Operations', 'Runtime'))} · ${latest.percent.toFixed(0)}%`
+                : t('Operations', 'NoRunningTasks')}
             </div>
           </div>
         </div>
       </SheetTrigger>
       <SheetContent className="w-[380px] sm:max-w-[380px]">
         <SheetHeader>
-          <SheetTitle>任务</SheetTitle>
+          <SheetTitle>{t('Operations', 'Tasks')}</SheetTitle>
         </SheetHeader>
         <div className="flex-1 space-y-2 overflow-auto px-4 pb-4">
           {ordered.length > 0 ? (
             ordered.map((operation) => <OperationRow key={operation.id} operation={operation} />)
           ) : (
             <div className="rounded-md border p-4 text-sm text-muted-foreground">
-              暂无任务。
+              {t('Operations', 'NoTasks')}
             </div>
           )}
         </div>

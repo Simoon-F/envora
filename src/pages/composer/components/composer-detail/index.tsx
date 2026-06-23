@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDefaultVersion, useInstalledVersions } from '@/hooks/use-runtimes';
+import { useTranslation } from '@/i18n/use-translation';
 import { tauriInvoke } from '@/lib/tauri';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -66,18 +67,18 @@ interface ComposerProgressEvent {
 }
 
 const repositoryPresets = [
-  { label: 'Packagist', value: 'https://repo.packagist.org' },
-  { label: '阿里云', value: 'https://mirrors.aliyun.com/composer/' },
-  { label: '腾讯云', value: 'https://mirrors.cloud.tencent.com/composer/' },
-  { label: '华为云', value: 'https://repo.huaweicloud.com/repository/php/' },
-];
+  { labelKey: 'Packagist', value: 'https://repo.packagist.org' },
+  { labelKey: 'Aliyun', value: 'https://mirrors.aliyun.com/composer/' },
+  { labelKey: 'TencentCloud', value: 'https://mirrors.cloud.tencent.com/composer/' },
+  { labelKey: 'HuaweiCloud', value: 'https://repo.huaweicloud.com/repository/php/' },
+] as const;
 
 const commandPresets = [
-  { label: '安装依赖', args: ['install'] },
-  { label: '更新依赖', args: ['update'] },
-  { label: '重建自动加载', args: ['dump-autoload'] },
-  { label: '诊断', args: ['diagnose'] },
-];
+  { labelKey: 'InstallDependencies', args: ['install'] },
+  { labelKey: 'UpdateDependencies', args: ['update'] },
+  { labelKey: 'DumpAutoload', args: ['dump-autoload'] },
+  { labelKey: 'Diagnose', args: ['diagnose'] },
+] as const;
 
 const collectMissingExtensions = (result: ComposerCommandResult | null) => {
   if (!result) return [];
@@ -94,12 +95,12 @@ const collectMissingExtensions = (result: ComposerCommandResult | null) => {
   return [...extensions];
 };
 
-const extensionHint = (extension: string) => {
+const extensionHint = (extension: string, t: ReturnType<typeof useTranslation>['t']) => {
   const name = extension.replace(/^ext-/, '');
   if (name === 'gd') {
-    return 'GD 常用于验证码、缩略图、Excel 和图片处理。如果当前 PHP 包里没有 gd.so，需要换用或重新打包带 GD 的 PHP。';
+    return t('Composer.MissingGdHint');
   }
-  return `当前 PHP 缺少 ${name} 扩展，Composer 不能确认依赖在本机可运行。`;
+  return t('Composer.MissingExtensionHint', { extension: name });
 };
 
 const firstConfigValue = (config: ComposerConfigEntry[], key: string) => {
@@ -134,6 +135,8 @@ const ComposerStatus = ({
   onUpdate: () => void;
   onRefresh: () => void;
 }) => {
+  const { t } = useTranslation();
+
   if (loading) {
     return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   }
@@ -150,11 +153,11 @@ const ComposerStatus = ({
           </CardHeader>
           <CardContent className="space-y-3">
             <Badge variant={info?.envora_installed ? 'default' : 'secondary'}>
-              {info?.envora_installed ? '已安装' : '未安装'}
+              {info?.envora_installed ? t('Common', 'Installed') : t('Common', 'Missing')}
             </Badge>
-            <StatusRow label="版本" value={info?.envora_version ?? ''} />
-            <StatusRow label="路径" value={info?.envora_path ?? ''} />
-            <StatusRow label="缓存目录" value={info?.envora_cache_dir ?? ''} />
+            <StatusRow label={t('Common', 'Version')} value={info?.envora_version ?? ''} />
+            <StatusRow label={t('Settings', 'Path')} value={info?.envora_path ?? ''} />
+            <StatusRow label={t('Composer', 'CacheDirectory')} value={info?.envora_cache_dir ?? ''} />
           </CardContent>
         </Card>
 
@@ -162,15 +165,15 @@ const ComposerStatus = ({
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Terminal className="h-4 w-4" />
-              PHP 运行环境
+              {t('Composer', 'PhpEnvironment')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Badge variant={info?.php_path ? 'default' : 'secondary'}>
-              {info?.php_path ? '就绪' : '缺失'}
+              {info?.php_path ? t('Common', 'Ready') : t('Common', 'Missing')}
             </Badge>
-            <StatusRow label="版本" value={info?.php_version ?? ''} />
-            <StatusRow label="可执行文件" value={info?.php_path ?? ''} />
+            <StatusRow label={t('Common', 'Version')} value={info?.php_version ?? ''} />
+            <StatusRow label={t('Composer', 'PhpExecutable')} value={info?.php_path ?? ''} />
             <StatusRow label="php.ini" value={info?.php_ini_path ?? ''} />
           </CardContent>
         </Card>
@@ -179,14 +182,14 @@ const ComposerStatus = ({
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="h-4 w-4" />
-              系统 Composer
+              {t('Composer', 'SystemComposer')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Badge variant={info?.system_available ? 'outline' : 'secondary'}>
-              {info?.system_available ? '已检测到' : '未找到'}
+              {info?.system_available ? t('Common', 'Installed') : t('Common', 'Missing')}
             </Badge>
-            <StatusRow label="版本" value={info?.system_version ?? ''} />
+            <StatusRow label={t('Common', 'Version')} value={info?.system_version ?? ''} />
           </CardContent>
         </Card>
       </div>
@@ -194,15 +197,15 @@ const ComposerStatus = ({
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={onInstall} disabled={busy}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          安装 / 重新安装
+          {t('Composer', 'InstallOrReinstall')}
         </Button>
         <Button variant="outline" onClick={onUpdate} disabled={busy || !info?.envora_installed}>
           <RefreshCw className="h-4 w-4" />
-          自我更新
+          {t('Composer', 'SelfUpdate')}
         </Button>
         <Button variant="ghost" onClick={onRefresh} disabled={busy}>
           <RefreshCw className="h-4 w-4" />
-          刷新
+          {t('Common', 'Refresh')}
         </Button>
         {message && <span className="text-xs text-muted-foreground whitespace-pre-wrap">{message}</span>}
       </div>
@@ -224,6 +227,7 @@ const ComposerStatus = ({
 };
 
 const ComposerConfig = () => {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<ComposerConfigEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -257,7 +261,7 @@ const ComposerConfig = () => {
     setMessage('');
     try {
       const result = await tauriInvoke<ComposerCommandResult>('set_composer_config', { key, value });
-      setMessage(result.stderr || result.stdout || '已保存。');
+      setMessage(result.stderr || result.stdout || t('Common', 'Saved'));
       await load();
     } catch (error) {
       setMessage(String(error));
@@ -276,42 +280,42 @@ const ComposerConfig = () => {
 
       <div className="grid gap-3 lg:grid-cols-3">
         <div className="space-y-2">
-          <Label>Packagist 仓库</Label>
+          <Label>{t('Composer', 'Repository')}</Label>
           <Input value={repo} onChange={(event) => setRepo(event.target.value)} placeholder="https://repo.packagist.org" />
           <div className="flex flex-wrap gap-1">
             {repositoryPresets.map((preset) => (
-              <Button key={preset.label} variant="outline" className="h-7 text-xs" onClick={() => setRepo(preset.value)}>
-                {preset.label}
+              <Button key={preset.labelKey} variant="outline" className="h-7 text-xs" onClick={() => setRepo(preset.value)}>
+                {preset.labelKey === 'Packagist' ? 'Packagist' : t('Composer', preset.labelKey)}
               </Button>
             ))}
           </div>
           <Button size="sm" onClick={() => saveValue('repo.packagist', repo)} disabled={saving || !repo}>
             <Save className="h-3 w-3" />
-            保存仓库
+            {t('Composer', 'SaveRepository')}
           </Button>
         </div>
 
         <div className="space-y-2">
-          <Label>进程超时时间</Label>
+          <Label>{t('Composer', 'ProcessTimeout')}</Label>
           <Input value={timeout} onChange={(event) => setTimeoutValue(event.target.value)} placeholder="300" />
           <Button size="sm" onClick={() => saveValue('process-timeout', timeout)} disabled={saving || !timeout}>
             <Save className="h-3 w-3" />
-            保存超时
+            {t('Composer', 'SaveTimeout')}
           </Button>
         </div>
 
         <div className="space-y-2">
-          <Label>缓存目录</Label>
-          <Input value={cacheDir} onChange={(event) => setCacheDir(event.target.value)} placeholder="Envora 数据目录/composer/cache" />
+          <Label>{t('Composer', 'CacheDirectory')}</Label>
+          <Input value={cacheDir} onChange={(event) => setCacheDir(event.target.value)} placeholder="Envora data directory/composer/cache" />
           <Button size="sm" onClick={() => saveValue('cache-dir', cacheDir)} disabled={saving || !cacheDir}>
             <Save className="h-3 w-3" />
-            保存缓存
+            {t('Composer', 'SaveCache')}
           </Button>
         </div>
       </div>
 
       <div className="rounded-md border">
-        <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">全局配置</div>
+        <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">{t('Composer', 'GlobalConfig')}</div>
         <div className="max-h-80 overflow-auto">
           {config.map((entry) => (
             <div key={entry.key} className="grid grid-cols-[240px_1fr] gap-3 border-b px-3 py-2 text-xs last:border-b-0">
@@ -336,6 +340,7 @@ const ComposerIssuePanel = ({
   onOpenPhp: () => void;
   onIgnoreExtension: (extension: string) => void;
 }) => {
+  const { t } = useTranslation();
   const missingExtensions = useMemo(() => collectMissingExtensions(result), [result]);
 
   if (missingExtensions.length === 0) {
@@ -348,9 +353,9 @@ const ComposerIssuePanel = ({
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
         <div className="min-w-0 flex-1 space-y-3">
           <div>
-            <div className="font-medium text-destructive">缺少 PHP 扩展</div>
+            <div className="font-medium text-destructive">{t('Composer', 'MissingPhpExtension')}</div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Composer 检测到当前 PHP 环境不满足依赖要求。优先修 PHP 运行时，临时忽略只适合先拉起项目。
+              {t('Composer', 'MissingPhpExtensionBody')}
             </p>
           </div>
 
@@ -358,24 +363,24 @@ const ComposerIssuePanel = ({
             {missingExtensions.map((extension) => (
               <div key={extension} className="rounded-md border bg-background p-2">
                 <div className="font-mono text-xs font-medium">{extension}</div>
-                <p className="mt-1 text-xs text-muted-foreground">{extensionHint(extension)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{extensionHint(extension, t)}</p>
               </div>
             ))}
           </div>
 
           <div className="space-y-1 text-xs text-muted-foreground">
             <div>PHP: <span className="font-mono">{info?.php_path || '-'}</span></div>
-            <div>php.ini: <span className="font-mono">{info?.php_ini_path || '未检测到，请运行 php --ini 查看'}</span></div>
+            <div>php.ini: <span className="font-mono">{info?.php_ini_path || t('Composer', 'PhpIniMissing')}</span></div>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={onOpenPhp}>
               <Wrench className="h-3.5 w-3.5" />
-              去 PHP 扩展
+              {t('Composer', 'OpenPhpExtensions')}
             </Button>
             {missingExtensions.map((extension) => (
               <Button key={extension} size="sm" variant="ghost" onClick={() => onIgnoreExtension(extension)}>
-                临时忽略 {extension}
+                {t('Composer', 'TemporarilyIgnore', { extension })}
               </Button>
             ))}
           </div>
@@ -386,6 +391,7 @@ const ComposerIssuePanel = ({
 };
 
 const ComposerRunner = ({ info }: { info: ComposerInfo | null }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: installedPhp } = useInstalledVersions('php');
   const { data: defaultPhp } = useDefaultVersion('php');
@@ -439,17 +445,17 @@ const ComposerRunner = ({ info }: { info: ComposerInfo | null }) => {
     <div className="space-y-4">
       <div className="grid gap-3 lg:grid-cols-[1fr_180px]">
         <div className="space-y-2">
-          <Label>项目目录</Label>
+          <Label>{t('RuntimeDetail', 'ProjectDirectory')}</Label>
           <Input value={projectDir} onChange={(event) => setProjectDir(event.target.value)} placeholder="/Users/you/Projects/myapp" />
         </div>
         <div className="space-y-2">
-          <Label>PHP 版本</Label>
+          <Label>{t('Composer', 'PhpVersion')}</Label>
           <select
             className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
             value={selectedPhp}
             onChange={(event) => setPhpVersion(event.target.value)}
           >
-            {!selectedPhp && <option value="">默认 PHP</option>}
+            {!selectedPhp && <option value="">{t('Common', 'Default')} PHP</option>}
             {installedPhp?.map((version) => (
               <option key={version.version} value={version.version}>
                 {version.version}
@@ -460,18 +466,18 @@ const ComposerRunner = ({ info }: { info: ComposerInfo | null }) => {
       </div>
 
       <div className="space-y-2">
-        <Label>Composer 参数</Label>
+        <Label>{t('Composer', 'ComposerArguments')}</Label>
         <div className="flex gap-2">
           <Input value={argsText} onChange={(event) => setArgsText(event.target.value)} placeholder="install --no-interaction" />
           <Button onClick={run} disabled={running || !projectDir || args.length === 0}>
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-            运行
+            {t('Common', 'Run')}
           </Button>
         </div>
         <div className="flex flex-wrap gap-1">
           {commandPresets.map((preset) => (
-            <Button key={preset.label} variant="outline" className="h-7 text-xs" onClick={() => setArgsText(preset.args.join(' '))}>
-              {preset.label}
+            <Button key={preset.labelKey} variant="outline" className="h-7 text-xs" onClick={() => setArgsText(preset.args.join(' '))}>
+              {t('Composer', preset.labelKey)}
             </Button>
           ))}
         </div>
@@ -480,7 +486,7 @@ const ComposerRunner = ({ info }: { info: ComposerInfo | null }) => {
       {error && <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">{error}</div>}
       {result && (
         <div className="space-y-2">
-          <Badge variant={result.status === 0 ? 'default' : 'destructive'}>退出码 {result.status}</Badge>
+          <Badge variant={result.status === 0 ? 'default' : 'destructive'}>{t('Composer', 'ExitCode', { code: result.status })}</Badge>
           <ComposerIssuePanel
             result={result}
             info={info}
@@ -497,6 +503,7 @@ const ComposerRunner = ({ info }: { info: ComposerInfo | null }) => {
 };
 
 export const ComposerDetail = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('status');
   const [statusInfo, setStatusInfo] = useState<ComposerInfo | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -530,7 +537,7 @@ export const ComposerDetail = () => {
 
       setInstallProgress({
         percent: payload.percent ?? 0,
-        message: payload.message ?? '处理中...',
+        message: payload.message ?? t('Operations', 'Processing'),
       });
     }).then((fn) => {
       unlisten = fn;
@@ -545,10 +552,10 @@ export const ComposerDetail = () => {
     installingRef.current = true;
     setStatusBusy(true);
     setStatusMessage('');
-    setInstallProgress({ percent: 0, message: '准备安装 Composer...' });
+    setInstallProgress({ percent: 0, message: t('Composer', 'PreparingInstall') });
     try {
       await tauriInvoke('install_composer');
-      setStatusMessage('Composer 已安装。');
+      setStatusMessage(t('Composer', 'ComposerInstalled'));
       setInstallProgress(null);
       await loadStatus();
     } catch (error) {
@@ -566,7 +573,7 @@ export const ComposerDetail = () => {
     setInstallProgress(null);
     try {
       const result = await tauriInvoke<ComposerCommandResult>('update_composer');
-      setStatusMessage(result.stdout || result.stderr || 'Composer 已更新。');
+      setStatusMessage(result.stdout || result.stderr || t('Composer', 'ComposerUpdated'));
       await loadStatus();
     } catch (error) {
       setStatusMessage(String(error));
@@ -580,20 +587,20 @@ export const ComposerDetail = () => {
       <div className="flex items-center gap-3">
         <Settings2 className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold">Composer</h1>
-        <Badge variant="outline">PHP 依赖管理器</Badge>
+        <Badge variant="outline">{t('Composer', 'DependencyManager')}</Badge>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="status">状态</TabsTrigger>
-          <TabsTrigger value="config">配置</TabsTrigger>
-          <TabsTrigger value="run">运行</TabsTrigger>
+          <TabsTrigger value="status">{t('Composer', 'Status')}</TabsTrigger>
+          <TabsTrigger value="config">{t('Composer', 'Config')}</TabsTrigger>
+          <TabsTrigger value="run">{t('Composer', 'Run')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="status" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Composer 运行环境</CardTitle>
+              <CardTitle className="text-base">{t('Composer', 'ComposerEnvironment')}</CardTitle>
             </CardHeader>
             <CardContent>
               <ComposerStatus
@@ -613,7 +620,7 @@ export const ComposerDetail = () => {
         <TabsContent value="config" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">全局配置</CardTitle>
+              <CardTitle className="text-base">{t('Composer', 'GlobalConfig')}</CardTitle>
             </CardHeader>
             <CardContent>
               <ComposerConfig />
@@ -624,7 +631,7 @@ export const ComposerDetail = () => {
         <TabsContent value="run" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">项目命令</CardTitle>
+              <CardTitle className="text-base">{t('Composer', 'ProjectCommand')}</CardTitle>
             </CardHeader>
             <CardContent>
               <ComposerRunner info={statusInfo} />

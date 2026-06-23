@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Save, Plus, Trash2, Globe, RefreshCw, FileText, FolderOpen } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useDefaultVersion, useInstalledVersions } from '@/hooks/use-runtimes';
+import { useTranslation } from '@/i18n/use-translation';
 import { tauriInvoke } from '@/lib/tauri';
 import type { RuntimeVersion } from '@/types/runtime';
 
@@ -16,6 +17,7 @@ interface VirtualHost { id: string; domain: string; root_dir: string; php_versio
 interface VHostConfFile { path: string; content: string; }
 
 const NginxConfEditor = ({ version }: { version: string }) => {
+  const { t } = useTranslation();
   const [content, setContent] = useState<string | null>(null);
   const [original, setOriginal] = useState('');
   const [loading, setLoading] = useState(true);
@@ -31,24 +33,24 @@ const NginxConfEditor = ({ version }: { version: string }) => {
   useEffect(() => { load(); }, [load]);
   const save = async () => {
     if (!content) return; setSaving(true); setMsg('');
-    try { await tauriInvoke('save_nginx_config', { version, content }); setOriginal(content); setMsg('已保存！'); setTimeout(() => setMsg(''), 2000); }
-    catch (e) { setMsg(`错误：${String(e)}`); }
+    try { await tauriInvoke('save_nginx_config', { version, content }); setOriginal(content); setMsg(t('Common.Saved')); setTimeout(() => setMsg(''), 2000); }
+    catch (e) { setMsg(t('Common.ErrorPrefix', { message: String(e) })); }
     finally { setSaving(false); }
   };
   const reload = async () => {
     setReloading(true);
-    try { await tauriInvoke('reload_nginx', { version }); setMsg('已重载！'); setTimeout(() => setMsg(''), 2000); }
-    catch (e) { setMsg(`重载失败：${String(e)}`); }
+    try { await tauriInvoke('reload_nginx', { version }); setMsg(t('RuntimeDetail.Reloaded')); setTimeout(() => setMsg(''), 2000); }
+    catch (e) { setMsg(t('RuntimeDetail.ReloadFailed', { message: String(e) })); }
     finally { setReloading(false); }
   };
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm">{msg && <span className={msg.startsWith('错误') || msg.startsWith('重载失败') ? 'text-red-500' : 'text-green-500'}>{msg}</span>}{content !== original && !msg && <span className="text-yellow-500">未保存</span>}</span>
+        <span className="text-sm">{msg && <span className={msg.startsWith(t('Common.ErrorPrefix', { message: '' })) || msg.startsWith(t('RuntimeDetail.ReloadFailed', { message: '' })) ? 'text-red-500' : 'text-green-500'}>{msg}</span>}{content !== original && !msg && <span className="text-yellow-500">{t('Common.Unsaved')}</span>}</span>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={reload} disabled={reloading}><RefreshCw className="h-3 w-3 mr-1" />重载</Button>
-          <Button size="sm" onClick={save} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />保存</Button>
+          <Button variant="outline" size="sm" onClick={reload} disabled={reloading}><RefreshCw className="h-3 w-3 mr-1" />{t('Common.Reload')}</Button>
+          <Button size="sm" onClick={save} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />{t('Common.Save')}</Button>
         </div>
       </div>
       <textarea className="w-full h-72 font-mono text-xs bg-muted p-3 rounded-md border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
@@ -57,6 +59,7 @@ const NginxConfEditor = ({ version }: { version: string }) => {
 };
 
 const VHostManager = ({ version }: { version: string }) => {
+  const { t } = useTranslation();
   const { data: defaultPhpVersion } = useDefaultVersion('php');
   const [vhosts, setVhosts] = useState<VirtualHost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +78,7 @@ const VHostManager = ({ version }: { version: string }) => {
     const selected = await open({
       directory: true,
       multiple: false,
-      title: '选择项目根目录',
+      title: t('RuntimeDetail.ChooseProjectRoot'),
       defaultPath: form.root_dir || undefined,
     });
 
@@ -134,7 +137,7 @@ const VHostManager = ({ version }: { version: string }) => {
     setConfigMessage('');
     try {
       await tauriInvoke('save_vhost_config', { id: configVhost.id, nginxVersion: version, content: configContent });
-      setConfigMessage('已保存并重载 nginx');
+      setConfigMessage(t('RuntimeDetail.SaveAndReloadedNginx'));
     } catch (e) {
       setConfigMessage(String(e));
     } finally {
@@ -145,30 +148,30 @@ const VHostManager = ({ version }: { version: string }) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{vhosts.length} 个站点</span>
-        <Button variant="outline" size="sm" onClick={() => setShowForm(!showForm)}><Plus className="h-3 w-3 mr-1" />添加站点</Button>
+        <span className="text-sm text-muted-foreground">{t('RuntimeDetail.SiteCount', { count: vhosts.length })}</span>
+        <Button variant="outline" size="sm" onClick={() => setShowForm(!showForm)}><Plus className="h-3 w-3 mr-1" />{t('Common.AddSite')}</Button>
       </div>
       {showForm && (
         <div className="grid grid-cols-2 gap-2 p-3 border rounded-md">
-          <div><Label className="text-xs">域名</Label><Input placeholder="myapp.test" value={form.domain} onChange={e => setForm({ ...form, domain: e.target.value })} /></div>
-          <div><Label className="text-xs">端口</Label><Input type="number" value={form.port} onChange={e => setForm({ ...form, port: parseInt(e.target.value) || 80 })} /></div>
+          <div><Label className="text-xs">{t('RuntimeDetail.Domain')}</Label><Input placeholder="myapp.test" value={form.domain} onChange={e => setForm({ ...form, domain: e.target.value })} /></div>
+          <div><Label className="text-xs">{t('RuntimeDetail.Port')}</Label><Input type="number" value={form.port} onChange={e => setForm({ ...form, port: parseInt(e.target.value) || 80 })} /></div>
           <div className="col-span-2">
-            <Label className="text-xs">项目根目录</Label>
+            <Label className="text-xs">{t('RuntimeDetail.ProjectRoot')}</Label>
             <div className="flex gap-2">
               <Input
                 placeholder="/Users/xxx/Projects/myapp/public"
                 value={form.root_dir}
                 onChange={e => setForm({ ...form, root_dir: e.target.value })}
               />
-              <Button type="button" variant="outline" size="sm" onClick={chooseRootDir} title="选择项目根目录">
-                <FolderOpen className="h-3 w-3 mr-1" />选择
+              <Button type="button" variant="outline" size="sm" onClick={chooseRootDir} title={t('RuntimeDetail.ChooseProjectRoot')}>
+                <FolderOpen className="h-3 w-3 mr-1" />{t('Common.Select')}
               </Button>
             </div>
           </div>
           {formError && <pre className="col-span-2 max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-red-500/10 p-2 text-xs text-red-600">{formError}</pre>}
           <div className="col-span-2 flex gap-2">
-            <Button size="sm" onClick={create} disabled={!form.domain || !form.root_dir}><Plus className="h-3 w-3 mr-1" />创建</Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>取消</Button>
+            <Button size="sm" onClick={create} disabled={!form.domain || !form.root_dir}><Plus className="h-3 w-3 mr-1" />{t('Common.Create')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>{t('Common.Cancel')}</Button>
           </div>
         </div>
       )}
@@ -184,22 +187,22 @@ const VHostManager = ({ version }: { version: string }) => {
               <Button variant="ghost" size="sm" className="h-7" onClick={() => remove(v.id)}><Trash2 className="h-3 w-3 text-red-500" /></Button>
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
-              <div>根目录：<code>{v.root_dir}</code></div>
-              <div>PHP: {v.php_version && v.php_version !== version ? v.php_version : '未设置'}</div>
+              <div>{t('RuntimeDetail.RootDirectory')}: <code>{v.root_dir}</code></div>
+              <div>PHP: {v.php_version && v.php_version !== version ? v.php_version : t('Common.NotSet')}</div>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openVhostConfig(v)}>
-                <FileText className="h-3 w-3 mr-1" />配置
+                <FileText className="h-3 w-3 mr-1" />{t('Common.Config')}
               </Button>
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => v.hosts_managed ? removeHosts(v.domain) : addHosts(v.domain)}>
-                {v.hosts_managed ? '从 /etc/hosts 移除' : '添加到 /etc/hosts'}
+                {v.hosts_managed ? t('Common.HostsRemove') : t('Common.HostsAdd')}
               </Button>
             </div>
           </div>
         ))}
-        {vhosts.length === 0 && <p className="text-sm text-muted-foreground py-4">尚未配置站点。</p>}
+        {vhosts.length === 0 && <p className="text-sm text-muted-foreground py-4">{t('RuntimeDetail.NoSites')}</p>}
       </div>
-      <Card><CardHeader className="py-2"><CardTitle className="text-xs font-medium flex items-center gap-1"><FileText className="h-3 w-3" /> /etc/hosts</CardTitle></CardHeader><CardContent className="p-2"><pre className="text-xs font-mono max-h-32 overflow-auto whitespace-pre-wrap bg-muted p-2 rounded">{hostsContent || '加载中...'}</pre></CardContent></Card>
+      <Card><CardHeader className="py-2"><CardTitle className="text-xs font-medium flex items-center gap-1"><FileText className="h-3 w-3" /> /etc/hosts</CardTitle></CardHeader><CardContent className="p-2"><pre className="text-xs font-mono max-h-32 overflow-auto whitespace-pre-wrap bg-muted p-2 rounded">{hostsContent || t('Common.Loading')}</pre></CardContent></Card>
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader className="pr-10">
@@ -208,7 +211,7 @@ const VHostManager = ({ version }: { version: string }) => {
           <div className="space-y-3">
             {configFile?.path && <div className="truncate text-xs text-muted-foreground">{configFile.path}</div>}
             {configMessage && (
-              <pre className={`max-h-28 overflow-auto whitespace-pre-wrap rounded-md p-2 text-xs ${configMessage.startsWith('已保存') ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+              <pre className={`max-h-28 overflow-auto whitespace-pre-wrap rounded-md p-2 text-xs ${configMessage === t('RuntimeDetail.SaveAndReloadedNginx') ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
                 {configMessage}
               </pre>
             )}
@@ -218,12 +221,12 @@ const VHostManager = ({ version }: { version: string }) => {
               onChange={e => setConfigContent(e.target.value)}
               spellCheck={false}
               disabled={configLoading}
-              placeholder={configLoading ? '加载中...' : ''}
+              placeholder={configLoading ? t('Common.Loading') : ''}
             />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setConfigOpen(false)}>关闭</Button>
+              <Button variant="outline" size="sm" onClick={() => setConfigOpen(false)}>{t('Common.Close')}</Button>
               <Button size="sm" onClick={saveVhostConfig} disabled={configLoading || configSaving || !configVhost}>
-                <Save className="h-3 w-3 mr-1" />保存
+                <Save className="h-3 w-3 mr-1" />{t('Common.Save')}
               </Button>
             </div>
           </div>
@@ -234,6 +237,7 @@ const VHostManager = ({ version }: { version: string }) => {
 };
 
 const VersionsTab = () => {
+  const { t } = useTranslation();
   const { data: installed, isLoading } = useInstalledVersions('nginx');
   if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   return (
@@ -243,23 +247,24 @@ const VersionsTab = () => {
           <span className="font-mono text-sm">{v.version}</span>
           <span className="text-xs text-muted-foreground">{v.size ? `${(v.size / 1_048_576).toFixed(0)} MB` : ''}</span>
         </div>
-      )) : <p className="text-sm text-muted-foreground">尚未安装任何版本。</p>}
+      )) : <p className="text-sm text-muted-foreground">{t('RuntimeDetail.NoVersionsInstalled')}</p>}
     </div>
   );
 };
 
 export const NginxDetail = ({ version }: { version: string }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('versions');
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
-        <TabsTrigger value="versions">版本</TabsTrigger>
+        <TabsTrigger value="versions">{t('Common.Versions')}</TabsTrigger>
         <TabsTrigger value="config">nginx.conf</TabsTrigger>
-        <TabsTrigger value="vhosts">站点</TabsTrigger>
+        <TabsTrigger value="vhosts">{t('RuntimeDetail.Sites')}</TabsTrigger>
       </TabsList>
-      <TabsContent value="versions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">版本</CardTitle></CardHeader><CardContent><VersionsTab /></CardContent></Card></TabsContent>
+      <TabsContent value="versions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">{t('Common.Versions')}</CardTitle></CardHeader><CardContent><VersionsTab /></CardContent></Card></TabsContent>
       <TabsContent value="config" className="mt-4"><Card><CardHeader><CardTitle className="text-base">nginx.conf</CardTitle></CardHeader><CardContent><NginxConfEditor key={version} version={version} /></CardContent></Card></TabsContent>
-      <TabsContent value="vhosts" className="mt-4"><Card><CardHeader><CardTitle className="text-base">站点</CardTitle></CardHeader><CardContent><VHostManager key={version} version={version} /></CardContent></Card></TabsContent>
+      <TabsContent value="vhosts" className="mt-4"><Card><CardHeader><CardTitle className="text-base">{t('RuntimeDetail.Sites')}</CardTitle></CardHeader><CardContent><VHostManager key={version} version={version} /></CardContent></Card></TabsContent>
     </Tabs>
   );
 };

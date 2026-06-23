@@ -7,6 +7,7 @@ import { MySQLDetail } from '@/pages/mysql-runtime/components/mysql-detail';
 import { NginxDetail } from '@/pages/nginx-runtime/components/nginx-detail';
 import { JavaDetail } from '@/pages/java-runtime/components/java-detail';
 import { NodeDetail } from '@/pages/node-runtime/components/node-detail';
+import { useTranslation } from '@/i18n/use-translation';
 import { RuntimeItem, type RuntimeItemInfo } from './components/runtime-item';
 
 const runtimes: RuntimeItemInfo[] = [
@@ -18,6 +19,7 @@ const runtimes: RuntimeItemInfo[] = [
 ];
 
 export const Runtimes = () => {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<RuntimeType>('php');
   const { data: installedPhp } = useInstalledVersions('php');
   const { data: installedNginx } = useInstalledVersions('nginx');
@@ -76,7 +78,7 @@ export const Runtimes = () => {
     <div className="flex h-full">
       {/* Sidebar */}
       <div className="w-56 border-r p-3 space-y-1 flex-shrink-0">
-        <h2 className="text-sm font-semibold px-3 py-2 text-muted-foreground">运行环境</h2>
+        <h2 className="text-sm font-semibold px-3 py-2 text-muted-foreground">{t('Runtimes', 'Runtimes')}</h2>
         {runtimes.map((runtime) => (
           <RuntimeItem
             key={runtime.type}
