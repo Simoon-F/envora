@@ -2,103 +2,162 @@
 
 [简体中文](README.zh-CN.md) | English
 
-Envora is a desktop local development environment manager for runtimes,
-services, and developer toolchains.
+Envora is a desktop development environment manager for local runtimes,
+services, configuration files, and language toolchains.
 
-It helps you install and switch runtimes, start or stop services, edit common
-configuration files, manage local sites, and keep language-specific tools close
-at hand from a single friendly interface.
+It gives developers one place to install runtime versions, switch defaults,
+manage service processes, edit common configuration files, and keep project
+tooling visible without replacing the command-line workflows they already use.
 
-> This project is moving toward open source. The codebase is still young, but
-> the direction is clear: make local development environments lighter, more
-> visible, and easier to share.
+> Envora is under active development. The project is being shaped in the open
+> toward a stable local development environment platform.
 
-## What Envora Does
+## Product Positioning
 
-- Manage local runtimes, services, and developer toolchains from a desktop app.
-- Install and switch supported runtime versions with clear progress and status
-  feedback.
-- Set default versions and expose runtime binaries to your shell.
-- Start, stop, restart, and inspect service status.
-- View and clear service logs.
-- Edit `php.ini`, `nginx.conf`, virtual host configs, and `my.cnf`.
-- Create Nginx virtual hosts and manage related `/etc/hosts` entries.
+Modern local development environments are often assembled from package
+managers, shell profiles, background services, global binaries, hidden config
+files, and project-specific conventions. That works, but over time it becomes
+hard to answer basic questions:
+
+- Which runtime version is active?
+- Where is this service reading its configuration from?
+- Which process owns this port?
+- What changed in my shell environment?
+- Can another developer reproduce this setup?
+
+Envora is designed to make that state explicit. It centralizes the operational
+surface of a local environment while keeping the underlying files, commands,
+and runtime directories inspectable.
+
+## Core Capabilities
+
+### Runtime Management
+
+- Install and manage multiple versions of PHP, Nginx, MySQL, Java, Node.js, and
+  Go.
+- Set default runtime versions and expose runtime commands through Envora's
+  managed `bin` directory.
+- Track install progress and long-running operations across navigation.
+- Keep downloaded packages, extracted runtimes, and runtime metadata in
+  predictable locations.
+
+### Service Operations
+
+- Start, stop, restart, and inspect local services from the dashboard.
+- View service status, ports, and logs in one place.
+- Clear logs and reload services after configuration changes.
+- Keep service lifecycle work visible through the operation center.
+
+### Configuration And Sites
+
+- Edit common configuration files, including `php.ini`, `nginx.conf`, virtual
+  host files, and `my.cnf`.
+- Create and manage Nginx virtual hosts.
+- Add or remove related `/etc/hosts` entries.
 - Manage MySQL users and databases.
+
+### Toolchain Utilities
+
 - Install, update, configure, and run Composer commands.
-- Grow toward Rust, Go, npm, pnpm, yarn, and other toolchains.
-- Switch between light, dark, and system themes.
+- Detect Envora-managed Composer and system Composer.
+- Manage Node.js package-manager entry points through npm and Corepack.
+- Configure Go environment paths and maintenance tasks.
 
-## Why
+### Application Experience
 
-Local development environments can become scattered across shell scripts,
-package managers, global services, hidden config files, and old runtime
-versions. Envora aims to make that state visible and manageable without forcing
-developers to give up the tools they already understand.
+- Bilingual interface: English and Simplified Chinese.
+- Light, dark, and system appearance modes.
+- Settings for data, runtime, command, and shell environment paths.
+- Desktop integration through Tauri.
 
-The goal is not to hide the tools developers already use. The goal is to put
-the important controls in one place, keep files editable, and make the local
-environment easier to reason about.
+## Supported Runtimes And Tools
+
+| Runtime or tool | Current behavior |
+| --- | --- |
+| PHP | macOS packages from `envora-runtime-packages`; Windows packages from official archives |
+| Nginx | Source download and local build flow |
+| MySQL | MySQL Community Server archive installation |
+| Java | Eclipse Temurin JDK discovery and installation through the Adoptium API, with `JAVA_HOME` support |
+| Node.js | Official Node.js binary archives, including `node`, `npm`, `npx`, and `corepack` |
+| npm | Follows the selected Node.js runtime |
+| pnpm, Yarn | Managed through Corepack where available |
+| Go | Stable Go archives from the official Go release index, with `GOROOT`, `GOPATH`, cache, and tooling support |
+| Composer | Envora-managed Composer installation plus system Composer detection |
+| Rust | Planned |
+
+Runtime release and packaging notes are documented in
+[docs/release-runtimes.md](docs/release-runtimes.md).
+
+Runtime binary assets are being separated into
+[`Simoon-F/envora-runtime-packages`](https://github.com/Simoon-F/envora-runtime-packages).
 
 ## Current Status
 
-Envora is currently in early development.
+Envora is currently pre-1.0 software.
 
-The app already contains working PHP, Nginx, MySQL, Java, Composer, service,
-configuration, virtual host, and settings screens, but the project is not yet a
-polished stable release. Some features may be macOS-first, platform support is
-still being refined, and release packaging is evolving.
+The application contains working screens and backend providers for the main
+runtime, service, configuration, virtual host, Composer, operation, and settings
+flows. Some capabilities are still macOS-first, packaging is still evolving,
+and platform parity is not yet complete.
 
-If you try it, please expect sharp edges and report anything confusing. Those
-reports are valuable.
+Use it with that expectation: the direction is stable, but the implementation
+surface is still being refined.
 
-## Runtime And Toolchain Support
+## Architecture
 
-| Runtime or tool | Current support |
-| --- | --- |
-| PHP | Prebuilt packages for macOS via the `envora-runtime-packages` releases, official Windows archives |
-| Nginx | Source download and local build |
-| MySQL | Official MySQL Community Server archives |
-| Java | Eclipse Temurin JDKs via the Adoptium API, with `JAVA_HOME` support |
-| Node.js | Official Node.js binary archives, including `node`, `npm`, `npx`, and `corepack` |
-| npm, pnpm, yarn | npm follows Node.js; pnpm and Yarn are enabled, activated, and installed per project through Corepack |
-| Composer | Envora-managed Composer plus system Composer detection |
-| Rust, Go | Planned |
+Envora is split into a React frontend and a Rust/Tauri backend.
 
-Runtime release packaging notes live in
-[docs/release-runtimes.md](docs/release-runtimes.md).
+```text
+.
+├── src/                  # React application
+│   ├── components/       # Layout, UI primitives, runtime components
+│   ├── hooks/            # SWR and Tauri data hooks
+│   ├── i18n/             # Locale files and translation helpers
+│   ├── pages/            # Dashboard, runtimes, Composer, settings
+│   ├── stores/           # Client-side state
+│   └── types/            # Shared frontend types
+├── src-tauri/            # Tauri desktop shell and Rust backend
+│   ├── assets/           # Default config templates
+│   └── src/
+│       ├── commands/     # Tauri command handlers
+│       ├── core/         # Platform helpers, events, and shared errors
+│       ├── download/     # Download and archive extraction
+│       ├── runtime/      # Runtime providers
+│       ├── service/      # Service lifecycle management
+│       ├── state/        # App state and operation tracking
+│       └── settings/     # App settings and managed paths
+└── docs/                 # Project documentation
+```
 
-Binary runtime assets are being split into a dedicated repository:
-[`Simoon-F/envora-runtime-packages`](https://github.com/Simoon-F/envora-runtime-packages).
-
-## Tech Stack
+## Technology Stack
 
 - [Tauri 2](https://tauri.app/) for the desktop shell and native integration
-- [Rust](https://www.rust-lang.org/) for runtime, service, download, and config
-  management
+- [Rust](https://www.rust-lang.org/) for runtime, service, download, and
+  filesystem operations
 - [React](https://react.dev/) and [TypeScript](https://www.typescriptlang.org/)
-  for the interface
-- [Vite](https://vite.dev/) for frontend tooling
-- [Tailwind CSS](https://tailwindcss.com/) and shadcn-style UI primitives
+  for the user interface
+- [Vite](https://vite.dev/) for frontend development and builds
+- [Tailwind CSS](https://tailwindcss.com/) with shadcn-style UI primitives
 - [SWR](https://swr.vercel.app/) and [Zustand](https://zustand.docs.pmnd.rs/)
-  for client-side data flow
+  for client-side data flow and state
 
 ## Requirements
 
 - Node.js
-- pnpm
+- pnpm 10+
 - Rust toolchain
-- Tauri system dependencies for your platform
+- Tauri system dependencies for your operating system
 
-For macOS runtime builds, Envora may also need Xcode Command Line Tools:
+On macOS, runtime builds may also require Xcode Command Line Tools:
 
 ```bash
 xcode-select --install
 ```
 
-When building Nginx locally, make sure common build tools and libraries are
-available on your system.
+When building Nginx locally, make sure common compiler tools and libraries are
+available on the system.
 
-## Getting Started
+## Development
 
 Clone the repository:
 
@@ -113,7 +172,7 @@ Install dependencies:
 pnpm install
 ```
 
-Run the Tauri development app:
+Run the desktop app in development mode:
 
 ```bash
 pnpm tauri dev
@@ -131,75 +190,50 @@ Build the desktop app:
 pnpm tauri build
 ```
 
-## Project Structure
+## Development Principles
 
-```text
-.
-├── src/                  # React app
-│   ├── components/       # Layout, UI, and runtime detail components
-│   ├── hooks/            # Tauri/SWR data hooks
-│   ├── pages/            # Dashboard, runtimes, Composer, settings
-│   ├── stores/           # Client-side state
-│   └── types/            # Shared frontend types
-├── src-tauri/            # Tauri and Rust backend
-│   ├── assets/           # Default runtime config templates
-│   └── src/
-│       ├── commands/     # Tauri command handlers
-│       ├── core/         # Platform helpers and shared errors
-│       ├── download/     # Download and extraction logic
-│       ├── runtime/      # PHP, Nginx, MySQL, Java, Node.js providers
-│       ├── service/      # Service lifecycle management
-│       ├── state/        # App state and background operation tracking
-│       └── settings/     # App settings and paths
-└── docs/                 # Project documentation
-```
-
-## Contributing
-
-Contributions are welcome.
-
-Because Envora is still taking shape, the most helpful contributions right now
-are:
-
-- Clear bug reports with your operating system, architecture, and reproduction
-  steps.
-- Feedback about confusing flows or missing local-development features.
-- Small, focused pull requests.
-- Runtime packaging notes and platform-specific fixes.
-- Documentation improvements.
-
-Before opening a larger pull request, please start with an issue or discussion
-so we can align on the direction.
-
-## Development Notes
-
-- Keep runtime behavior explicit. Envora should make local state easier to see,
-  not harder.
-- Keep long-running operations visible and understandable across navigation.
-- Prefer editable config files over opaque generated state.
-- Keep platform differences visible in the Rust layer.
-- Avoid broad rewrites while the app is stabilizing.
-- Be careful with service processes, ports, filesystem writes, and shell
-  environment changes.
+- Keep local state visible. Runtime versions, service status, shell changes,
+  and generated files should be easy to inspect.
+- Preserve standard workflows. Envora should complement shells, config files,
+  package managers, and service processes rather than obscure them.
+- Treat long-running work as first-class. Downloads, builds, installs, and
+  service operations should expose progress and failure context.
+- Keep platform behavior explicit. macOS, Windows, and Linux differences should
+  be handled deliberately in the Rust layer.
+- Be conservative with filesystem writes, service processes, ports, and shell
+  profile updates.
 
 ## Roadmap
 
-- Improve cross-platform runtime and toolchain support.
-- Add Rust, Go, npm, pnpm, yarn, and related tooling.
-- Add clearer release packaging and update flows.
+- Improve cross-platform parity for runtime installation and service control.
+- Complete release packaging and update flows.
 - Expand diagnostics for failed downloads, builds, and service starts.
-- Improve first-run onboarding.
-- Add tests around runtime providers and service lifecycle behavior.
+- Add Rust toolchain management.
+- Improve first-run onboarding and environment health checks.
+- Add automated tests around runtime providers and service lifecycle behavior.
 - Publish stable installation packages.
+
+## Contributing
+
+Contributions are welcome, especially:
+
+- Reproducible bug reports with operating system, architecture, and steps.
+- Feedback about confusing environment-management workflows.
+- Small, focused pull requests.
+- Runtime packaging improvements and platform-specific fixes.
+- Documentation updates.
+
+For larger changes, please open an issue or discussion first so the direction
+can be aligned before implementation.
 
 ## License
 
-The license has not been finalized yet.
+The project license has not been finalized.
 
-If you plan to use Envora in another project, please wait until a license file
-is added or open an issue to discuss your use case.
+Please wait for a license file before using Envora in another project, or open
+an issue to discuss your intended use.
 
 ## Acknowledgements
 
-Envora builds on the excellent work of the Tauri, Rust, React, PHP, Nginx,
-MySQL, Composer, and open source tooling communities.
+Envora builds on the work of the Tauri, Rust, React, PHP, Nginx, MySQL, Java,
+Node.js, Go, Composer, and open source tooling communities.

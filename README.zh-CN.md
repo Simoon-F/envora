@@ -2,52 +2,75 @@
 
 简体中文 | [English](README.md)
 
-Envora 是一个面向运行时、服务和开发者工具链的桌面端本地开发环境管理工具。
+Envora 是一款面向本地开发环境的桌面管理工具，用于统一管理运行时、服务进程、配置文件和语言工具链。
 
-它帮助你在一个友好的界面中安装和切换运行时、启动或停止服务、编辑常用配置文件、管理本地域名站点，并把不同语言生态里的常用工具放在触手可及的位置。
+它希望把开发者日常需要处理的环境状态集中到一个清晰的界面中：安装运行时版本、切换默认版本、启动或停止服务、编辑常见配置、管理本地域名站点，并让项目工具链保持可见、可控、可排查。
 
-> Envora 正在走向开源。项目还很年轻，但方向很明确：让本地开发环境更轻、更可见，也更容易被协作和分享。
+> Envora 正处于积极开发阶段。项目正在以开源方向推进，目标是成为一个稳定、清晰、可协作的本地开发环境管理平台。
 
-## Envora 能做什么
+## 产品定位
 
-- 在桌面应用中管理本地运行时、服务和开发者工具链。
-- 安装和切换支持的运行时版本，并提供清晰的进度和状态反馈。
-- 设置默认版本，并将运行时命令暴露到 Shell 环境。
-- 启动、停止、重启服务，并查看服务状态。
-- 查看和清空服务日志。
-- 编辑 `php.ini`、`nginx.conf`、虚拟主机配置和 `my.cnf`。
-- 创建 Nginx 虚拟主机，并管理相关的 `/etc/hosts` 记录。
+现代本地开发环境通常由包管理器、Shell 配置、后台服务、全局命令、隐藏配置文件和项目约定共同组成。它们足够灵活，但时间一长，很多基础问题会变得不容易回答：
+
+- 当前使用的是哪个运行时版本？
+- 这个服务读取的是哪一份配置？
+- 哪个进程占用了端口？
+- Shell 环境到底被写入了什么？
+- 另一位开发者能否复现这套环境？
+
+Envora 的定位不是替代命令行，也不是隐藏底层工具，而是把本地环境的关键状态显式呈现出来。它集中管理常见操作，同时保留文件、命令和运行时目录的可检查性。
+
+## 核心能力
+
+### 运行时管理
+
+- 安装并管理 PHP、Nginx、MySQL、Java、Node.js 和 Go 的多个版本。
+- 设置默认运行时版本，并通过 Envora 托管的 `bin` 目录暴露命令。
+- 在页面切换后持续追踪安装、下载、构建等长耗时任务。
+- 将下载包、解压后的运行时和版本元数据放在可预期的位置。
+
+### 服务运维
+
+- 在仪表盘中启动、停止、重启和查看本地服务。
+- 统一查看服务状态、端口和日志。
+- 清空日志，并在配置变更后重载服务。
+- 通过任务中心展示服务生命周期相关操作。
+
+### 配置和站点
+
+- 编辑 `php.ini`、`nginx.conf`、虚拟主机配置和 `my.cnf` 等常见配置文件。
+- 创建和管理 Nginx 虚拟主机。
+- 添加或移除相关 `/etc/hosts` 记录。
 - 管理 MySQL 用户和数据库。
+
+### 工具链能力
+
 - 安装、更新、配置 Composer，并运行常用 Composer 命令。
-- 后续扩展 Rust、Go、npm、pnpm、yarn 等更多工具链。
+- 同时支持 Envora 托管 Composer 和系统 Composer 检测。
+- 通过 npm 和 Corepack 管理 Node.js 生态的包管理器入口。
+- 配置 Go 环境路径，并提供缓存清理、SDK 修复等维护能力。
+
+### 应用体验
+
+- 支持英文和简体中文界面。
 - 支持浅色、深色和跟随系统主题。
+- 支持配置数据目录、运行时目录、命令目录和 Shell 环境。
+- 基于 Tauri 提供桌面端原生能力集成。
 
-## 为什么做 Envora
+## 支持的运行时和工具
 
-本地开发环境经常散落在 Shell 脚本、包管理器、全局服务、隐藏配置文件和旧版本运行时里。时间久了，环境状态会变得难以确认，也不容易迁移或协作。
-
-Envora 希望把这些状态变得清晰可见。它不是要隐藏开发者已经熟悉的工具，而是把关键控制集中到一个地方，同时保留配置文件可编辑、运行时可理解、问题可排查的开发体验。
-
-## 当前状态
-
-Envora 目前处于早期开发阶段。
-
-应用中已经包含 PHP、Nginx、MySQL、Java、Composer、服务控制、配置编辑、虚拟主机和设置等页面，但它还不是一个完全稳定的正式版本。部分能力可能仍然以 macOS 为主，跨平台支持和发布流程也还在继续完善。
-
-如果你愿意尝试，欢迎反馈任何令人困惑的地方。对一个正在走向开源的项目来说，这些反馈很重要。
-
-## 运行时和工具链支持
-
-| 运行时或工具 | 当前支持 |
+| 运行时或工具 | 当前行为 |
 | --- | --- |
-| PHP | macOS 使用 `envora-runtime-packages` Releases 预编译包，Windows 使用官方归档包 |
+| PHP | macOS 使用 `envora-runtime-packages` 预编译包；Windows 使用官方归档包 |
 | Nginx | 下载源码并在本地构建 |
-| MySQL | 使用 MySQL Community Server 官方归档包 |
-| Java | 使用 Eclipse Temurin / Adoptium API 安装 JDK，并设置 `JAVA_HOME` |
+| MySQL | 使用 MySQL Community Server 官方归档包安装 |
+| Java | 通过 Adoptium API 发现和安装 Eclipse Temurin JDK，并支持 `JAVA_HOME` |
 | Node.js | 使用 Node.js 官方二进制归档包，包含 `node`、`npm`、`npx` 和 `corepack` |
-| npm、pnpm、yarn | npm 随 Node.js 管理；pnpm 和 Yarn 通过 Corepack 启用、激活和按项目安装 |
-| Composer | Envora 托管 Composer，并检测系统 Composer |
-| Rust、Go | 计划中 |
+| npm | 跟随当前选择的 Node.js 版本 |
+| pnpm、Yarn | 在可用环境中通过 Corepack 管理 |
+| Go | 通过 Go 官方发布索引安装稳定版本归档包，并支持 `GOROOT`、`GOPATH`、缓存和工具维护 |
+| Composer | 支持 Envora 托管 Composer，并检测系统 Composer |
+| Rust | 计划中 |
 
 运行时发布和打包说明见
 [docs/release-runtimes.md](docs/release-runtimes.md)。
@@ -55,31 +78,65 @@ Envora 目前处于早期开发阶段。
 运行时二进制资产正在拆分到独立仓库：
 [`Simoon-F/envora-runtime-packages`](https://github.com/Simoon-F/envora-runtime-packages)。
 
+## 当前状态
+
+Envora 目前仍处于 1.0 之前的开发阶段。
+
+应用已经包含主要运行时、服务控制、配置编辑、虚拟主机、Composer、任务中心和设置等流程的前端页面与后端 provider。部分能力仍然以 macOS 优先，发布打包流程仍在完善，不同平台之间的能力还没有完全对齐。
+
+可以把它视为一个方向明确、正在快速成型的项目，而不是一个已经完成所有稳定性承诺的正式版本。
+
+## 架构概览
+
+Envora 由 React 前端和 Rust/Tauri 后端组成。
+
+```text
+.
+├── src/                  # React 应用
+│   ├── components/       # 布局、UI 基础组件和运行时组件
+│   ├── hooks/            # SWR 与 Tauri 数据 hooks
+│   ├── i18n/             # 多语言文案与翻译工具
+│   ├── pages/            # 仪表盘、运行时、Composer、设置页面
+│   ├── stores/           # 前端状态
+│   └── types/            # 前端共享类型
+├── src-tauri/            # Tauri 桌面壳和 Rust 后端
+│   ├── assets/           # 默认配置模板
+│   └── src/
+│       ├── commands/     # Tauri 命令处理
+│       ├── core/         # 平台工具、事件和共享错误
+│       ├── download/     # 下载和归档解压
+│       ├── runtime/      # 运行时 provider
+│       ├── service/      # 服务生命周期管理
+│       ├── state/        # 应用状态和任务追踪
+│       └── settings/     # 应用设置和托管路径
+└── docs/                 # 项目文档
+```
+
 ## 技术栈
 
 - [Tauri 2](https://tauri.app/)：桌面应用外壳和原生能力集成
-- [Rust](https://www.rust-lang.org/)：运行时、服务、下载和配置管理
-- [React](https://react.dev/) 与 [TypeScript](https://www.typescriptlang.org/)：界面开发
-- [Vite](https://vite.dev/)：前端构建工具
-- [Tailwind CSS](https://tailwindcss.com/) 和 shadcn 风格 UI 基础组件
+- [Rust](https://www.rust-lang.org/)：运行时、服务、下载和文件系统操作
+- [React](https://react.dev/) 与 [TypeScript](https://www.typescriptlang.org/)：用户界面
+- [Vite](https://vite.dev/)：前端开发和构建工具
+- [Tailwind CSS](https://tailwindcss.com/) 与 shadcn 风格 UI 基础组件
 - [SWR](https://swr.vercel.app/) 与 [Zustand](https://zustand.docs.pmnd.rs/)：前端数据流和状态管理
 
 ## 环境要求
 
 - Node.js
-- pnpm
+- pnpm 10+
 - Rust toolchain
-- 当前平台所需的 Tauri 系统依赖
+- 当前操作系统所需的 Tauri 系统依赖
 
-如果你在 macOS 上构建运行时，可能还需要安装 Xcode Command Line Tools：
+在 macOS 上构建运行时时，可能还需要安装 Xcode Command Line Tools：
 
 ```bash
 xcode-select --install
 ```
 
-如果需要本地构建 Nginx，请确认系统中已经准备好常见构建工具和依赖库。
+如果需要在本地构建 Nginx，请确认系统中已经准备好常见编译工具和依赖库。
 
-## 快速开始
+## 本地开发
 
 克隆仓库：
 
@@ -94,7 +151,7 @@ cd envora
 pnpm install
 ```
 
-启动 Tauri 开发应用：
+启动桌面端开发应用：
 
 ```bash
 pnpm tauri dev
@@ -112,68 +169,42 @@ pnpm build
 pnpm tauri build
 ```
 
-## 项目结构
+## 开发原则
 
-```text
-.
-├── src/                  # React 应用
-│   ├── components/       # 布局、UI 和运行时详情组件
-│   ├── hooks/            # Tauri/SWR 数据 hooks
-│   ├── pages/            # Dashboard、运行时、Composer、设置页面
-│   ├── stores/           # 前端状态
-│   └── types/            # 前端共享类型
-├── src-tauri/            # Tauri 和 Rust 后端
-│   ├── assets/           # 默认运行时配置模板
-│   └── src/
-│       ├── commands/     # Tauri 命令处理
-│       ├── core/         # 平台工具和共享错误
-│       ├── download/     # 下载和解压逻辑
-│       ├── runtime/      # PHP、Nginx、MySQL、Java、Node.js provider
-│       ├── service/      # 服务生命周期管理
-│       ├── state/        # 应用状态和后台任务追踪
-│       └── settings/     # 应用设置和路径
-└── docs/                 # 项目文档
-```
+- 让本地状态保持可见。运行时版本、服务状态、Shell 变更和生成文件都应该容易检查。
+- 保留标准工作流。Envora 应该补充 Shell、配置文件、包管理器和服务进程，而不是让它们变得不可见。
+- 认真对待长耗时任务。下载、构建、安装和服务操作需要展示进度与失败上下文。
+- 明确处理平台差异。macOS、Windows 和 Linux 的差异应尽量在 Rust 层清晰表达。
+- 谨慎处理文件系统写入、服务进程、端口和 Shell 配置更新。
+
+## 路线图
+
+- 提升运行时安装和服务控制的跨平台一致性。
+- 完善发布打包和更新流程。
+- 增强下载、构建和服务启动失败时的诊断信息。
+- 增加 Rust 工具链管理能力。
+- 改善首次启动引导和环境健康检查。
+- 为运行时 provider 和服务生命周期补充自动化测试。
+- 发布稳定安装包。
 
 ## 参与贡献
 
-欢迎参与贡献。
+欢迎参与贡献，尤其是：
 
-因为 Envora 还在成型阶段，目前最有帮助的贡献包括：
-
-- 清晰的 Bug 报告，并附上操作系统、芯片架构和复现步骤。
-- 对操作流程、交互体验或本地开发能力缺口的反馈。
+- 带有操作系统、芯片架构和复现步骤的 Bug 报告。
+- 对本地环境管理流程中困惑点的反馈。
 - 小而聚焦的 Pull Request。
-- 运行时打包说明和平台相关修复。
-- 文档改进。
+- 运行时打包改进和平台相关修复。
+- 文档更新。
 
-如果你准备提交较大的改动，建议先发起 issue 或 discussion，方便我们先对齐方向。
+如果准备提交较大的改动，建议先发起 issue 或 discussion，方便在实现前对齐方向。
 
-## 开发约定
+## 许可证
 
-- 运行时行为应该尽量明确。Envora 应该让本地状态更容易看见，而不是更难理解。
-- 长耗时操作应该在页面切换后仍然保持可见、可理解。
-- 优先保留可编辑的配置文件，而不是把状态藏在不透明的生成逻辑中。
-- 平台差异尽量放在 Rust 层清晰处理。
-- 在项目稳定前，避免大范围重写。
-- 谨慎处理服务进程、端口、文件系统写入和 Shell 环境修改。
+项目许可证尚未最终确定。
 
-## Roadmap
-
-- 改进跨平台运行时和工具链支持。
-- 支持 Rust、Go、npm、pnpm、yarn 以及相关工具。
-- 完善发布打包和更新流程。
-- 增强下载、构建和服务启动失败时的诊断信息。
-- 改善首次使用体验。
-- 为运行时 provider 和服务生命周期补充测试。
-- 发布稳定安装包。
-
-## License
-
-许可证尚未最终确定。
-
-如果你计划在其他项目中使用 Envora，请等待仓库加入 license 文件，或发起 issue 讨论你的使用场景。
+在仓库加入 license 文件之前，请先不要将 Envora 用于其他项目；如有具体使用场景，可以发起 issue 讨论。
 
 ## 致谢
 
-Envora 建立在 Tauri、Rust、React、PHP、Nginx、MySQL、Composer 以及众多开源工具社区的优秀成果之上。
+Envora 建立在 Tauri、Rust、React、PHP、Nginx、MySQL、Java、Node.js、Go、Composer 以及众多开源工具社区的优秀成果之上。
