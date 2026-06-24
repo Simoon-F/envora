@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useInstalledVersions } from '@/hooks/use-runtimes';
 import { useTranslation } from '@/i18n/use-translation';
 import type { RuntimeType } from '@/types/runtime';
@@ -5,7 +6,7 @@ import type { RuntimeType } from '@/types/runtime';
 export interface RuntimeItemInfo {
   type: RuntimeType;
   name: string;
-  icon: string;
+  icon: ReactNode;
 }
 
 interface RuntimeItemProps {
@@ -26,7 +27,7 @@ export const RuntimeItem = ({ runtime, selected, onSelect }: RuntimeItemProps) =
         selected ? 'border-primary/20 bg-primary/10' : 'border-transparent hover:bg-muted'
       }`}
     >
-      <span className="text-xl">{runtime.icon}</span>
+      <span className="flex h-6 w-6 items-center justify-center text-xl">{runtime.icon}</span>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium">{runtime.name}</div>
         <div className="text-xs text-muted-foreground">{t('Runtimes', 'InstalledVersionsCount', { count })}</div>

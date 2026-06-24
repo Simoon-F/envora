@@ -8,6 +8,7 @@ import { MysqlRuntime } from '@/pages/mysql-runtime';
 import { NginxRuntime } from '@/pages/nginx-runtime';
 import { JavaRuntime } from '@/pages/java-runtime';
 import { NodeRuntime } from '@/pages/node-runtime';
+import { GoRuntime } from '@/pages/go-runtime';
 import { Composer } from '@/pages/composer';
 import { Settings } from '@/pages/settings';
 import { OperationEvents } from '@/components/runtime/operation-events';
@@ -32,6 +33,7 @@ const App = () => {
           <Route path="/runtimes/nginx" element={<NginxRuntime />} />
           <Route path="/runtimes/java" element={<JavaRuntime />} />
           <Route path="/runtimes/node" element={<NodeRuntime />} />
+          <Route path="/runtimes/go" element={<GoRuntime />} />
           <Route path="/composer" element={<Composer />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

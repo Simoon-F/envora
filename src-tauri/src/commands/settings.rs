@@ -99,9 +99,17 @@ pub(crate) async fn ensure_shell_environment(state: &AppState) -> Result<(), App
     let bin_dir = settings.bin_dir.clone();
     let data_dir = settings.data_dir.clone();
     let composer_dir = data_dir.join("composer");
+    let go_dir = data_dir.join("go");
+    let go_env = go_dir.join("env");
+    let go_tools_bin = data_dir.join("go-tools").join("bin");
     std::fs::create_dir_all(&bin_dir)?;
     std::fs::create_dir_all(&composer_dir)?;
     std::fs::create_dir_all(composer_dir.join("cache"))?;
+    std::fs::create_dir_all(&go_dir)?;
+    std::fs::create_dir_all(&go_tools_bin)?;
+    if !go_env.exists() {
+        std::fs::write(&go_env, "")?;
+    }
     if bin_dir.join("composer.phar").exists() {
         crate::commands::composer::write_composer_launcher(&state)?;
     }
@@ -204,14 +212,24 @@ fn shell_env_script(data_dir: &str) -> String {
             "# Envora shell environment\n\
              $env:ENVORA_HOME = {home}\n\
              $env:ENVORA_BIN = Join-Path $env:ENVORA_HOME 'bin'\n\
+             $env:ENVORA_GOENV = Join-Path $env:ENVORA_HOME 'go\\env'\n\
+             $env:ENVORA_GO_TOOLS_BIN = Join-Path $env:ENVORA_HOME 'go-tools\\bin'\n\
+             $env:GOENV = $env:ENVORA_GOENV\n\
              if (($env:Path -split ';') -notcontains $env:ENVORA_BIN) {{\n\
              \x20 $env:Path = \"$env:ENVORA_BIN;$env:Path\"\n\
+             }}\n\
+             if (($env:Path -split ';') -notcontains $env:ENVORA_GO_TOOLS_BIN) {{\n\
+             \x20 $env:Path = \"$env:ENVORA_GO_TOOLS_BIN;$env:Path\"\n\
              }}\n\
              $env:COMPOSER_HOME = Join-Path $env:ENVORA_HOME 'composer'\n\
              $env:COMPOSER_CACHE_DIR = Join-Path $env:COMPOSER_HOME 'cache'\n\
              $env:ENVORA_JAVA_HOME_FILE = Join-Path $env:ENVORA_HOME 'runtimes\\java\\default_home'\n\
              if (Test-Path $env:ENVORA_JAVA_HOME_FILE) {{\n\
              \x20 $env:JAVA_HOME = (Get-Content -Raw $env:ENVORA_JAVA_HOME_FILE).Trim()\n\
+             }}\n\
+             $env:ENVORA_GOROOT_FILE = Join-Path $env:ENVORA_HOME 'runtimes\\go\\default_home'\n\
+             if (Test-Path $env:ENVORA_GOROOT_FILE) {{\n\
+             \x20 $env:GOROOT = (Get-Content -Raw $env:ENVORA_GOROOT_FILE).Trim()\n\
              }}\n"
         )
     }
@@ -223,15 +241,26 @@ fn shell_env_script(data_dir: &str) -> String {
             "# Envora shell environment\n\
          export ENVORA_HOME={home}\n\
          export ENVORA_BIN=\"$ENVORA_HOME/bin\"\n\
+         export ENVORA_GOENV=\"$ENVORA_HOME/go/env\"\n\
+         export ENVORA_GO_TOOLS_BIN=\"$ENVORA_HOME/go-tools/bin\"\n\
+         export GOENV=\"$ENVORA_GOENV\"\n\
          case \":$PATH:\" in\n\
          \x20 *\":$ENVORA_BIN:\"*) ;;\n\
          \x20 *) export PATH=\"$ENVORA_BIN:$PATH\" ;;\n\
+         esac\n\
+         case \":$PATH:\" in\n\
+         \x20 *\":$ENVORA_GO_TOOLS_BIN:\"*) ;;\n\
+         \x20 *) export PATH=\"$ENVORA_GO_TOOLS_BIN:$PATH\" ;;\n\
          esac\n\
          export COMPOSER_HOME=\"$ENVORA_HOME/composer\"\n\
          export COMPOSER_CACHE_DIR=\"$ENVORA_HOME/composer/cache\"\n\
          export ENVORA_JAVA_HOME_FILE=\"$ENVORA_HOME/runtimes/java/default_home\"\n\
          if [ -f \"$ENVORA_JAVA_HOME_FILE\" ]; then\n\
          \x20 export JAVA_HOME=\"$(cat \"$ENVORA_JAVA_HOME_FILE\")\"\n\
+         fi\n\
+         export ENVORA_GOROOT_FILE=\"$ENVORA_HOME/runtimes/go/default_home\"\n\
+         if [ -f \"$ENVORA_GOROOT_FILE\" ]; then\n\
+         \x20 export GOROOT=\"$(cat \"$ENVORA_GOROOT_FILE\")\"\n\
          fi\n"
         )
     }

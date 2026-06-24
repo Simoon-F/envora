@@ -1,6 +1,11 @@
 import { useTauriSwr } from './use-swr';
 import { useTauriMutation } from './use-mutation';
 import type {
+  GoCacheStatus,
+  GoEnvStatus,
+  GoEnvUpdate,
+  GoSdkRepairStatus,
+  GoToolsStatus,
   NodePackageManagerName,
   NodePackageManagerStatus,
   RuntimeVersion,
@@ -76,5 +81,47 @@ export function useInstallNodePackageManager() {
 export function useInstallProjectPackageManager() {
   return useTauriMutation<NodePackageManagerStatus, { projectDir: string }>(
     'install_project_package_manager'
+  );
+}
+
+export function useGoEnvStatus() {
+  return useTauriSwr<GoEnvStatus>(
+    'get_go_env_status'
+  );
+}
+
+export function useUpdateGoEnv() {
+  return useTauriMutation<GoEnvStatus, { update: GoEnvUpdate }>(
+    'update_go_env'
+  );
+}
+
+export function useGoToolsStatus() {
+  return useTauriSwr<GoToolsStatus>(
+    'get_go_tools_status'
+  );
+}
+
+export function useInstallGoTool() {
+  return useTauriMutation<GoToolsStatus, { name: string; version?: string | null }>(
+    'install_go_tool'
+  );
+}
+
+export function useGoCacheStatus() {
+  return useTauriSwr<GoCacheStatus>(
+    'get_go_cache_status'
+  );
+}
+
+export function useClearGoCache() {
+  return useTauriMutation<GoCacheStatus, { target: string }>(
+    'clear_go_cache'
+  );
+}
+
+export function useRepairGoSdk() {
+  return useTauriMutation<GoSdkRepairStatus, Record<string, never>>(
+    'repair_go_sdk'
   );
 }

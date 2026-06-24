@@ -13,6 +13,7 @@ pub enum RuntimeType {
     Mysql,
     Java,
     Node,
+    Go,
 }
 
 impl RuntimeType {
@@ -23,6 +24,7 @@ impl RuntimeType {
             RuntimeType::Mysql => "mysql",
             RuntimeType::Java => "java",
             RuntimeType::Node => "node",
+            RuntimeType::Go => "go",
         }
     }
 
@@ -33,6 +35,7 @@ impl RuntimeType {
             "mysql" => Some(RuntimeType::Mysql),
             "java" => Some(RuntimeType::Java),
             "node" | "nodejs" => Some(RuntimeType::Node),
+            "go" | "golang" => Some(RuntimeType::Go),
             _ => None,
         }
     }

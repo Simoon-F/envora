@@ -1,3 +1,4 @@
+use super::go::GoProvider;
 use super::java::JavaProvider;
 use super::mysql::MysqlProvider;
 use super::nginx::NginxProvider;
@@ -29,6 +30,10 @@ pub fn create_provider(
             settings.bin_dir.clone(),
         )),
         RuntimeType::Node => Box::new(NodeProvider::new(
+            settings.runtime_dir.clone(),
+            settings.bin_dir.clone(),
+        )),
+        RuntimeType::Go => Box::new(GoProvider::new(
             settings.runtime_dir.clone(),
             settings.bin_dir.clone(),
         )),
