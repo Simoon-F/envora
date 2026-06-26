@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useInstalledVersions } from '@/hooks/use-runtimes';
 import { useTranslation } from '@/i18n/use-translation';
 import type { RuntimeType } from '@/types/runtime';
+import { cn } from '@/lib/utils';
 
 export interface RuntimeItemInfo {
   type: RuntimeType;
@@ -23,17 +24,46 @@ export const RuntimeItem = ({ runtime, selected, onSelect }: RuntimeItemProps) =
   return (
     <button
       onClick={onSelect}
-      className={`flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
-        selected ? 'border-primary/20 bg-primary/10' : 'border-transparent hover:bg-muted'
-      }`}
+      className={cn(
+        'group relative flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-200',
+        selected
+          ? 'border-primary/30 bg-primary/5'
+          : 'border-transparent hover:bg-muted/60',
+      )}
     >
-      <span className="flex h-6 w-6 items-center justify-center text-xl">{runtime.icon}</span>
+      {selected && (
+        <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
+      )}
+      <span
+        className={cn(
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition-colors',
+          selected
+            ? 'border-primary/30 bg-primary/10 text-primary'
+            : 'border-border bg-card text-muted-foreground group-hover:text-foreground',
+        )}
+      >
+        {runtime.icon}
+      </span>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium">{runtime.name}</div>
-        <div className="text-xs text-muted-foreground">{t('Runtimes', 'InstalledVersionsCount', { count })}</div>
+        <div
+          className={cn(
+            'text-sm transition-colors',
+            selected ? 'font-medium text-foreground' : 'text-foreground',
+          )}
+        >
+          {runtime.name}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {t('Runtimes', 'InstalledVersionsCount', { count })}
+        </div>
       </div>
       {count > 0 && (
-        <span className={`h-2 w-2 rounded-full ${selected ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+        <span
+          className={cn(
+            'size-2 rounded-full transition-colors',
+            selected ? 'bg-primary' : 'bg-muted-foreground/30',
+          )}
+        />
       )}
     </button>
   );

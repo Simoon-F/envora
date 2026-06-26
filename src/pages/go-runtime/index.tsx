@@ -1,8 +1,9 @@
 import { Badge } from '@/components/ui/badge';
-import { GoLogo } from '@/components/runtime/go-logo';
 import { GoDetail } from './components/go-detail';
 import { useDefaultVersion, useInstalledVersions } from '@/hooks/use-runtimes';
 import { useTranslation } from '@/i18n/use-translation';
+import { RuntimeHeader } from '@/components/runtime/runtime-header';
+import { RuntimeIcon } from '@/components/runtime/runtime-icons';
 
 export const GoRuntime = () => {
   const { t } = useTranslation();
@@ -11,12 +12,17 @@ export const GoRuntime = () => {
   const currentVersion = defaultVersion || installed?.[0]?.version || '';
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex items-center gap-3">
-        <GoLogo className="h-8 w-20" />
-        {currentVersion && <Badge variant="outline">{t('Common', 'DefaultValue', { value: currentVersion })}</Badge>}
-      </div>
-
+    <div className="space-y-6 p-6">
+      <RuntimeHeader
+        icon={<RuntimeIcon type="go" className="h-5 w-10" />}
+        name="Go"
+        version={currentVersion}
+        actions={
+          currentVersion ? (
+            <Badge variant="outline">{t('Common', 'DefaultValue', { value: currentVersion })}</Badge>
+          ) : undefined
+        }
+      />
       <GoDetail version={currentVersion || 'latest'} />
     </div>
   );

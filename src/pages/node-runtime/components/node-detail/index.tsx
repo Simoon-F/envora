@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Check, Download, FolderOpen, Loader2, PackageCheck, Power, RefreshCcw, Terminal, Trash2 } from 'lucide-react';
+import { FolderOpen, Loader2, Package, PackageCheck, Power, RefreshCcw, Terminal } from 'lucide-react';
 import {
   useAvailableVersions,
   useDefaultVersion,
@@ -22,6 +20,11 @@ import {
 import { useTranslation } from '@/i18n/use-translation';
 import { useOperationsStore } from '@/stores/operations';
 import type { NodePackageManagerName, NodePackageManagerStatus, NodeToolStatus, RuntimeVersion, VersionInfo } from '@/types/runtime';
+import { VersionRow } from '@/components/runtime/version-row';
+import { InstallableVersionRow } from '@/components/runtime/installable-version-row';
+import { ProgressBlock } from '@/components/runtime/progress-block';
+import { DetailTabs } from '@/components/runtime/detail-tabs';
+import { EmptyState } from '@/components/runtime/empty-state';
 
 const NodeVersionsTab = () => {
   const { t } = useTranslation();
@@ -88,93 +91,57 @@ const NodeVersionsTab = () => {
   return (
     <div className="space-y-4">
       {actionError && (
-        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-danger/10 p-3 text-xs text-danger">
           {actionError}
         </pre>
       )}
 
       {isLoading ? (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-5 w-5 animate-spin" />
+        <div className="flex justify-center py-8">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       ) : installed && installed.length > 0 ? (
         <div className="space-y-2">
           {installed.map((v: RuntimeVersion) => (
-            <div key={v.version} className="flex items-center justify-between rounded-md border p-3">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm">Node.js {v.version}</span>
-                {v.version === defaultVersion && (
-                  <Badge>
-                    <Check className="mr-1 h-3 w-3" />
-                    {t('Common', 'Default')}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{formatBytes(v.size)}</span>
-                {v.version !== defaultVersion && (
-                  <Button variant="ghost" size="sm" onClick={() => handleSwitchDefault(v.version)}>
-                    {t('Common', 'SetDefault')}
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => handleUninstall(v.version)}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
+            <VersionRow
+              key={v.version}
+              label={`Node.js ${v.version}`}
+              size={v.size}
+              isDefault={v.version === defaultVersion}
+              onSetDefault={v.version !== defaultVersion ? () => handleSwitchDefault(v.version) : undefined}
+              onUninstall={() => handleUninstall(v.version)}
+            />
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">{t('RuntimeDetail', 'NoNodeVersionsInstalled')}</p>
+        <EmptyState
+          icon={<Package className="size-5" />}
+          title={t('RuntimeDetail', 'NoNodeVersionsInstalled')}
+        />
       )}
 
       {visibleOperation && (
-        <div className="space-y-1">
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className={`h-full transition-all duration-300 ${
-                visibleOperation.status === 'failed' ? 'bg-destructive' : 'bg-primary'
-              }`}
-              style={{ width: `${visibleOperation.percent}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span>
-              Node.js {visibleOperation.target.version}：{visibleOperation.error || visibleOperation.message} ({visibleOperation.percent.toFixed(0)}%)
-            </span>
-            {visibleOperation.status !== 'running' && visibleOperation.status !== 'queued' && (
-              <button
-                type="button"
-                className="shrink-0 text-foreground hover:underline"
-                onClick={() => removeOperation(visibleOperation.id)}
-              >
-                {t('Common', 'Clear')}
-              </button>
-            )}
-          </div>
-        </div>
+        <ProgressBlock
+          label={`Node.js ${visibleOperation.target.version}`}
+          message={visibleOperation.message}
+          error={visibleOperation.error}
+          percent={visibleOperation.percent}
+          status={visibleOperation.status}
+          onClear={() => removeOperation(visibleOperation.id)}
+        />
       )}
 
       <div>
         <h4 className="mb-2 text-sm font-medium">{t('RuntimeDetail', 'AvailableVersions')}</h4>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {installable.map((v: VersionInfo) => (
-            <button
+            <InstallableVersionRow
               key={v.version}
-              type="button"
-              className="flex w-full items-center justify-between rounded-md border p-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isInstalling}
-              onClick={() => handleInstall(v.version)}
-            >
-              <span className="font-mono text-sm">Node.js {v.version}</span>
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md">
-                {runningOperation?.target.version === v.version ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Download className="h-3 w-3" />
-                )}
-              </span>
-            </button>
+              label={`Node.js ${v.version}`}
+              isInstalling={isInstalling}
+              isThisInstalling={runningOperation?.target.version === v.version}
+              onInstall={() => handleInstall(v.version)}
+            />
           ))}
           {installable.length === 0 && (
             <p className="text-sm text-muted-foreground">{t('RuntimeDetail', 'AllAvailableInstalledOrUnavailable')}</p>
@@ -191,7 +158,7 @@ const NodeShellInfo = ({ version }: { version: string }) => {
 
   return (
     <div className="space-y-3 text-sm">
-      <div className="rounded-md border p-3">
+      <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-2 flex items-center gap-2 font-medium">
           <Terminal className="h-4 w-4 text-muted-foreground" />
           {t('RuntimeDetail', 'ShellEnvironment')}
@@ -201,7 +168,7 @@ const NodeShellInfo = ({ version }: { version: string }) => {
             {t('RuntimeDetail', 'CommandDirectoryLinked', { commands: 'node, npm, npx, corepack' })}
           </div>
           <div>
-            {t('RuntimeDetail', 'CurrentDefaultInstallDir', { path: '' })}<code>{nodeHome}</code>
+            {t('RuntimeDetail', 'CurrentDefaultInstallDir', { path: '' })}<code className="ml-1 rounded bg-code-bg px-1.5 py-0.5 font-mono text-xs">{nodeHome}</code>
           </div>
         </div>
       </div>
@@ -282,7 +249,7 @@ const NodePackageManagersTab = () => {
   return (
     <div className="space-y-4 text-sm">
       {actionError && (
-        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-danger/10 p-3 text-xs text-danger">
           {actionError}
         </pre>
       )}
@@ -294,7 +261,7 @@ const NodePackageManagersTab = () => {
       ) : (
         <>
           {!hasNode && (
-            <div className="rounded-md border border-dashed p-3 text-muted-foreground">
+            <div className="rounded-lg border border-dashed border-border p-3 text-muted-foreground">
               {t('RuntimeDetail', 'ToolsRequireNode')}
             </div>
           )}
@@ -342,7 +309,7 @@ const NodePackageManagersTab = () => {
             </Button>
           </div>
 
-          <div className="space-y-3 rounded-md border p-3">
+          <div className="space-y-3 rounded-lg border border-border bg-card p-3">
             <div className="flex flex-col gap-2 md:flex-row md:items-end">
               <div className="flex-1 space-y-1">
                 <Label htmlFor="node-project-dir">{t('RuntimeDetail', 'ProjectDirectory')}</Label>
@@ -369,7 +336,7 @@ const NodePackageManagersTab = () => {
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 rounded-md bg-muted/40 p-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-2 rounded-lg bg-muted/50 p-3 md:flex-row md:items-center md:justify-between">
               <div className="space-y-1">
                 <div className="font-medium">
                   {status?.project_package_manager ? status.project_package_manager.raw : t('Common', 'Missing') + ' packageManager'}
@@ -392,9 +359,8 @@ const NodePackageManagersTab = () => {
             </div>
           </div>
 
-          <div className="rounded-md border p-3 text-xs text-muted-foreground">
-            {t('RuntimeDetail', 'NpmFollowsNode')}
-            <code className="ml-1">{status?.bin_dir}</code>
+          <div className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
+            {t('RuntimeDetail', 'NpmFollowsNode')}<code className="ml-1 rounded bg-code-bg px-1.5 py-0.5 font-mono">{status?.bin_dir}</code>
           </div>
         </>
       )}
@@ -405,12 +371,12 @@ const NodePackageManagersTab = () => {
 const ToolStatusRow = ({ tool, label, note }: { tool?: NodeToolStatus; label: string; note: string }) => {
   const { t } = useTranslation();
   return (
-    <div className="flex min-h-16 items-center justify-between gap-3 rounded-md border p-3">
+    <div className="flex min-h-16 items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
       <div className="min-w-0">
         <div className="font-medium">{label}</div>
         <div className="truncate text-xs text-muted-foreground">{note}</div>
       </div>
-      <Badge variant={tool?.version ? 'default' : 'outline'} className="shrink-0 font-mono">
+      <Badge variant={tool?.version ? 'success' : 'outline'} className="shrink-0 font-mono">
         {tool?.version || t('Common', 'NotReady')}
       </Badge>
     </div>
@@ -425,51 +391,12 @@ export const NodeDetail = ({ version }: { version: string }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('versions');
 
-  return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList>
-        <TabsTrigger value="versions">{t('Common', 'Versions')}</TabsTrigger>
-        <TabsTrigger value="packages">{t('RuntimeDetail', 'PackageManagers')}</TabsTrigger>
-        <TabsTrigger value="shell">Shell</TabsTrigger>
-      </TabsList>
-      <TabsContent value="versions" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t('Common', 'Versions')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <NodeVersionsTab />
-          </CardContent>
-        </Card>
-      </TabsContent>
-      <TabsContent value="packages" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Node.js {t('RuntimeDetail', 'PackageManagers')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <NodePackageManagersTab />
-          </CardContent>
-        </Card>
-      </TabsContent>
-      <TabsContent value="shell" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t('RuntimeDetail', 'Environment', { name: 'Node.js' })}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <NodeShellInfo version={version} />
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
-  );
+  const tabs = [
+    { value: 'versions', label: t('Common', 'Versions'), title: t('Common', 'Versions'), content: <NodeVersionsTab /> },
+    { value: 'packages', label: t('RuntimeDetail', 'PackageManagers'), title: `Node.js ${t('RuntimeDetail', 'PackageManagers')}`, content: <NodePackageManagersTab /> },
+    { value: 'shell', label: 'Shell', title: t('RuntimeDetail', 'Environment', { name: 'Node.js' }), content: <NodeShellInfo version={version} /> },
+  ];
+
+  return <DetailTabs tabs={tabs} value={activeTab} onValueChange={setActiveTab} />;
 };
 
-const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-};

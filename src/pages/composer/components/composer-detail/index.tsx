@@ -5,10 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDefaultVersion, useInstalledVersions } from '@/hooks/use-runtimes';
 import { useTranslation } from '@/i18n/use-translation';
 import { tauriInvoke } from '@/lib/tauri';
+import { DetailTabs } from '@/components/runtime/detail-tabs';
+import { RuntimeHeader } from '@/components/runtime/runtime-header';
 import { listen } from '@tauri-apps/api/event';
 import {
   AlertTriangle,
@@ -138,7 +139,7 @@ const ComposerStatus = ({
   const { t } = useTranslation();
 
   if (loading) {
-    return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   }
 
   return (
@@ -147,7 +148,7 @@ const ComposerStatus = ({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <PackageCheck className="h-4 w-4" />
+              <PackageCheck className="size-4" />
               Envora Composer
             </CardTitle>
           </CardHeader>
@@ -164,7 +165,7 @@ const ComposerStatus = ({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Terminal className="h-4 w-4" />
+              <Terminal className="size-4" />
               {t('Composer', 'PhpEnvironment')}
             </CardTitle>
           </CardHeader>
@@ -181,7 +182,7 @@ const ComposerStatus = ({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="h-4 w-4" />
+              <CheckCircle2 className="size-4" />
               {t('Composer', 'SystemComposer')}
             </CardTitle>
           </CardHeader>
@@ -196,15 +197,15 @@ const ComposerStatus = ({
 
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={onInstall} disabled={busy}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
           {t('Composer', 'InstallOrReinstall')}
         </Button>
         <Button variant="outline" onClick={onUpdate} disabled={busy || !info?.envora_installed}>
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw className="size-4" />
           {t('Composer', 'SelfUpdate')}
         </Button>
         <Button variant="ghost" onClick={onRefresh} disabled={busy}>
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw className="size-4" />
           {t('Common', 'Refresh')}
         </Button>
         {message && <span className="text-xs text-muted-foreground whitespace-pre-wrap">{message}</span>}
@@ -271,12 +272,12 @@ const ComposerConfig = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   }
 
   return (
     <div className="space-y-4">
-      {message && <div className="rounded-md border bg-muted p-2 text-xs whitespace-pre-wrap">{message}</div>}
+      {message && <div className="rounded-lg border border-border bg-code-bg p-2 text-xs whitespace-pre-wrap">{message}</div>}
 
       <div className="grid gap-3 lg:grid-cols-3">
         <div className="space-y-2">
@@ -290,7 +291,7 @@ const ComposerConfig = () => {
             ))}
           </div>
           <Button size="sm" onClick={() => saveValue('repo.packagist', repo)} disabled={saving || !repo}>
-            <Save className="h-3 w-3" />
+            <Save className="size-3.5" />
             {t('Composer', 'SaveRepository')}
           </Button>
         </div>
@@ -299,7 +300,7 @@ const ComposerConfig = () => {
           <Label>{t('Composer', 'ProcessTimeout')}</Label>
           <Input value={timeout} onChange={(event) => setTimeoutValue(event.target.value)} placeholder="300" />
           <Button size="sm" onClick={() => saveValue('process-timeout', timeout)} disabled={saving || !timeout}>
-            <Save className="h-3 w-3" />
+            <Save className="size-3.5" />
             {t('Composer', 'SaveTimeout')}
           </Button>
         </div>
@@ -308,13 +309,13 @@ const ComposerConfig = () => {
           <Label>{t('Composer', 'CacheDirectory')}</Label>
           <Input value={cacheDir} onChange={(event) => setCacheDir(event.target.value)} placeholder="Envora data directory/composer/cache" />
           <Button size="sm" onClick={() => saveValue('cache-dir', cacheDir)} disabled={saving || !cacheDir}>
-            <Save className="h-3 w-3" />
+            <Save className="size-3.5" />
             {t('Composer', 'SaveCache')}
           </Button>
         </div>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-lg border border-border bg-card">
         <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">{t('Composer', 'GlobalConfig')}</div>
         <div className="max-h-80 overflow-auto">
           {config.map((entry) => (
@@ -348,9 +349,9 @@ const ComposerIssuePanel = ({
   }
 
   return (
-    <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
+    <div className="rounded-lg border border-border bg-card border-destructive/30 bg-destructive/5 p-3 text-sm">
       <div className="flex items-start gap-2">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
         <div className="min-w-0 flex-1 space-y-3">
           <div>
             <div className="font-medium text-destructive">{t('Composer', 'MissingPhpExtension')}</div>
@@ -361,7 +362,7 @@ const ComposerIssuePanel = ({
 
           <div className="grid gap-2 md:grid-cols-2">
             {missingExtensions.map((extension) => (
-              <div key={extension} className="rounded-md border bg-background p-2">
+              <div key={extension} className="rounded-lg border border-border bg-card bg-background p-2">
                 <div className="font-mono text-xs font-medium">{extension}</div>
                 <p className="mt-1 text-xs text-muted-foreground">{extensionHint(extension, t)}</p>
               </div>
@@ -470,7 +471,7 @@ const ComposerRunner = ({ info }: { info: ComposerInfo | null }) => {
         <div className="flex gap-2">
           <Input value={argsText} onChange={(event) => setArgsText(event.target.value)} placeholder="install --no-interaction" />
           <Button onClick={run} disabled={running || !projectDir || args.length === 0}>
-            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            {running ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
             {t('Common', 'Run')}
           </Button>
         </div>
@@ -483,7 +484,7 @@ const ComposerRunner = ({ info }: { info: ComposerInfo | null }) => {
         </div>
       </div>
 
-      {error && <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">{error}</div>}
+      {error && <div className="rounded-lg bg-danger/10 p-2 text-xs text-danger">{error}</div>}
       {result && (
         <div className="space-y-2">
           <Badge variant={result.status === 0 ? 'default' : 'destructive'}>{t('Composer', 'ExitCode', { code: result.status })}</Badge>
@@ -493,7 +494,7 @@ const ComposerRunner = ({ info }: { info: ComposerInfo | null }) => {
             onOpenPhp={() => navigate('/runtimes/php')}
             onIgnoreExtension={appendIgnoreExtension}
           />
-          <pre className="max-h-96 overflow-auto rounded-md border bg-muted p-3 text-xs whitespace-pre-wrap">
+          <pre className="max-h-96 overflow-auto rounded-lg border border-border bg-code-bg p-3 text-xs whitespace-pre-wrap">
             {[result.stdout, result.stderr].filter(Boolean).join('\n')}
           </pre>
         </div>
@@ -582,63 +583,20 @@ export const ComposerDetail = () => {
     }
   };
 
+  const tabs = [
+    { value: 'status', label: t('Composer', 'Status'), title: t('Composer', 'ComposerEnvironment'), content: <ComposerStatus info={statusInfo} loading={statusLoading} busy={statusBusy} message={statusMessage} progress={installProgress} onInstall={install} onUpdate={update} onRefresh={loadStatus} /> },
+    { value: 'config', label: t('Composer', 'Config'), title: t('Composer', 'GlobalConfig'), content: <ComposerConfig /> },
+    { value: 'run', label: t('Composer', 'Run'), title: t('Composer', 'ProjectCommand'), content: <ComposerRunner info={statusInfo} /> },
+  ];
+
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <Settings2 className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold">Composer</h1>
-        <Badge variant="outline">{t('Composer', 'DependencyManager')}</Badge>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="status">{t('Composer', 'Status')}</TabsTrigger>
-          <TabsTrigger value="config">{t('Composer', 'Config')}</TabsTrigger>
-          <TabsTrigger value="run">{t('Composer', 'Run')}</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="status" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('Composer', 'ComposerEnvironment')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ComposerStatus
-                info={statusInfo}
-                loading={statusLoading}
-                busy={statusBusy}
-                message={statusMessage}
-                progress={installProgress}
-                onInstall={install}
-                onUpdate={update}
-                onRefresh={loadStatus}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="config" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('Composer', 'GlobalConfig')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ComposerConfig />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="run" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('Composer', 'ProjectCommand')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ComposerRunner info={statusInfo} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+    <div className="p-6 space-y-6">
+      <RuntimeHeader
+        icon={<Settings2 className="size-5" />}
+        name="Composer"
+        actions={<Badge variant="outline">{t('Composer', 'DependencyManager')}</Badge>}
+      />
+      <DetailTabs tabs={tabs} value={activeTab} onValueChange={setActiveTab} />
     </div>
   );
 };

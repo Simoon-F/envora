@@ -2,6 +2,8 @@ import { Badge } from '@/components/ui/badge';
 import { NodeDetail } from './components/node-detail';
 import { useDefaultVersion, useInstalledVersions } from '@/hooks/use-runtimes';
 import { useTranslation } from '@/i18n/use-translation';
+import { RuntimeHeader } from '@/components/runtime/runtime-header';
+import { NodeIcon } from '@/components/runtime/runtime-icons';
 
 export const NodeRuntime = () => {
   const { t } = useTranslation();
@@ -10,13 +12,17 @@ export const NodeRuntime = () => {
   const currentVersion = defaultVersion || installed?.[0]?.version || '';
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex items-center gap-3">
-        <span className="text-2xl">⬢</span>
-        <h1 className="text-2xl font-bold">Node.js</h1>
-        {currentVersion && <Badge variant="outline">{t('Common', 'DefaultValue', { value: currentVersion })}</Badge>}
-      </div>
-
+    <div className="space-y-6 p-6">
+      <RuntimeHeader
+        icon={<NodeIcon className="size-5" />}
+        name="Node.js"
+        version={currentVersion}
+        actions={
+          currentVersion ? (
+            <Badge variant="outline">{t('Common', 'DefaultValue', { value: currentVersion })}</Badge>
+          ) : undefined
+        }
+      />
       <NodeDetail version={currentVersion || 'latest'} />
     </div>
   );

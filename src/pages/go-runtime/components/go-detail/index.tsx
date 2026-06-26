@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Check, Download, HardDrive, Loader2, PackageCheck, RefreshCcw, Save, ShieldCheck, Terminal, Trash2, Wrench } from 'lucide-react';
+import { Check, HardDrive, Loader2, Package, PackageCheck, RefreshCcw, Save, ShieldCheck, Terminal, Trash2, Wrench } from 'lucide-react';
 import {
   useAvailableVersions,
   useClearGoCache,
@@ -24,6 +22,11 @@ import {
 import { useTranslation } from '@/i18n/use-translation';
 import { useOperationsStore } from '@/stores/operations';
 import type { GoEnvUpdate, RuntimeVersion, VersionInfo } from '@/types/runtime';
+import { VersionRow } from '@/components/runtime/version-row';
+import { InstallableVersionRow } from '@/components/runtime/installable-version-row';
+import { ProgressBlock } from '@/components/runtime/progress-block';
+import { DetailTabs } from '@/components/runtime/detail-tabs';
+import { EmptyState } from '@/components/runtime/empty-state';
 
 const GoVersionsTab = () => {
   const { t } = useTranslation();
@@ -90,93 +93,57 @@ const GoVersionsTab = () => {
   return (
     <div className="space-y-4">
       {actionError && (
-        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-danger/10 p-3 text-xs text-danger">
           {actionError}
         </pre>
       )}
 
       {isLoading ? (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-5 w-5 animate-spin" />
+        <div className="flex justify-center py-8">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       ) : installed && installed.length > 0 ? (
         <div className="space-y-2">
           {installed.map((v: RuntimeVersion) => (
-            <div key={v.version} className="flex items-center justify-between rounded-md border p-3">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm">Go {v.version}</span>
-                {v.version === defaultVersion && (
-                  <Badge>
-                    <Check className="mr-1 h-3 w-3" />
-                    {t('Common', 'Default')}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{formatBytes(v.size)}</span>
-                {v.version !== defaultVersion && (
-                  <Button variant="ghost" size="sm" onClick={() => handleSwitchDefault(v.version)}>
-                    {t('Common', 'SetDefault')}
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => handleUninstall(v.version)}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
+            <VersionRow
+              key={v.version}
+              label={`Go ${v.version}`}
+              size={v.size}
+              isDefault={v.version === defaultVersion}
+              onSetDefault={v.version !== defaultVersion ? () => handleSwitchDefault(v.version) : undefined}
+              onUninstall={() => handleUninstall(v.version)}
+            />
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">{t('RuntimeDetail', 'NoGoVersionsInstalled')}</p>
+        <EmptyState
+          icon={<Package className="size-5" />}
+          title={t('RuntimeDetail', 'NoGoVersionsInstalled')}
+        />
       )}
 
       {visibleOperation && (
-        <div className="space-y-1">
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className={`h-full transition-all duration-300 ${
-                visibleOperation.status === 'failed' ? 'bg-destructive' : 'bg-primary'
-              }`}
-              style={{ width: `${visibleOperation.percent}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span>
-              Go {visibleOperation.target.version}: {visibleOperation.error || visibleOperation.message} ({visibleOperation.percent.toFixed(0)}%)
-            </span>
-            {visibleOperation.status !== 'running' && visibleOperation.status !== 'queued' && (
-              <button
-                type="button"
-                className="shrink-0 text-foreground hover:underline"
-                onClick={() => removeOperation(visibleOperation.id)}
-              >
-                {t('Common', 'Clear')}
-              </button>
-            )}
-          </div>
-        </div>
+        <ProgressBlock
+          label={`Go ${visibleOperation.target.version}`}
+          message={visibleOperation.message}
+          error={visibleOperation.error}
+          percent={visibleOperation.percent}
+          status={visibleOperation.status}
+          onClear={() => removeOperation(visibleOperation.id)}
+        />
       )}
 
       <div>
         <h4 className="mb-2 text-sm font-medium">{t('RuntimeDetail', 'AvailableVersions')}</h4>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {installable.map((v: VersionInfo) => (
-            <button
+            <InstallableVersionRow
               key={v.version}
-              type="button"
-              className="flex w-full items-center justify-between rounded-md border p-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isInstalling}
-              onClick={() => handleInstall(v.version)}
-            >
-              <span className="font-mono text-sm">Go {v.version}</span>
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md">
-                {runningOperation?.target.version === v.version ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Download className="h-3 w-3" />
-                )}
-              </span>
-            </button>
+              label={`Go ${v.version}`}
+              isInstalling={isInstalling}
+              isThisInstalling={runningOperation?.target.version === v.version}
+              onInstall={() => handleInstall(v.version)}
+            />
           ))}
           {installable.length === 0 && (
             <p className="text-sm text-muted-foreground">{t('RuntimeDetail', 'AllAvailableInstalledOrUnavailable')}</p>
@@ -193,7 +160,7 @@ const GoShellInfo = ({ version }: { version: string }) => {
 
   return (
     <div className="space-y-3 text-sm">
-      <div className="rounded-md border p-3">
+      <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-2 flex items-center gap-2 font-medium">
           <Terminal className="h-4 w-4 text-muted-foreground" />
           {t('RuntimeDetail', 'ShellEnvironment')}
@@ -203,7 +170,7 @@ const GoShellInfo = ({ version }: { version: string }) => {
             {t('RuntimeDetail', 'CommandDirectoryLinked', { commands: 'go, gofmt' })}
           </div>
           <div>
-            {t('RuntimeDetail', 'VersionWritesGoRoot', { path: '' })}<code>{goRoot}</code>
+            {t('RuntimeDetail', 'VersionWritesGoRoot', { path: '' })}<code className="ml-1 rounded bg-code-bg px-1.5 py-0.5 font-mono text-xs">{goRoot}</code>
           </div>
         </div>
       </div>
@@ -272,33 +239,33 @@ const GoEnvTab = () => {
   return (
     <div className="space-y-4">
       {actionError && (
-        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-danger/10 p-3 text-xs text-danger">
           {actionError}
         </pre>
       )}
       {message && <p className="text-sm text-muted-foreground">{message}</p>}
 
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-md border p-3">
+        <div className="rounded-lg border border-border bg-card p-3">
           <Label className="text-xs text-muted-foreground">{t('RuntimeDetail', 'GoExecutable')}</Label>
           <p className="mt-1 break-all font-mono text-sm">{status.go_executable || t('Common', 'NotSet')}</p>
         </div>
-        <div className="rounded-md border p-3">
+        <div className="rounded-lg border border-border bg-card p-3">
           <Label className="text-xs text-muted-foreground">GOROOT</Label>
           <p className="mt-1 break-all font-mono text-sm">{status.goroot || t('Common', 'NotSet')}</p>
         </div>
-        <div className="rounded-md border p-3">
+        <div className="rounded-lg border border-border bg-card p-3">
           <Label className="text-xs text-muted-foreground">{t('Common', 'Version')}</Label>
           <p className="mt-1 font-mono text-sm">{status.go_version || status.default_go_version || t('Common', 'NotSet')}</p>
         </div>
-        <div className="rounded-md border p-3">
+        <div className="rounded-lg border border-border bg-card p-3">
           <Label className="text-xs text-muted-foreground">{t('RuntimeDetail', 'GoEnvFile')}</Label>
           <p className="mt-1 break-all font-mono text-sm">{status.goenv || t('Common', 'NotSet')}</p>
           <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{status.envora_goenv}</p>
         </div>
       </div>
 
-      <div className="rounded-md border p-3">
+      <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-2 flex items-center justify-between gap-3">
           <div>
             <div className="text-sm font-medium">{t('RuntimeDetail', 'GoManagedPaths')}</div>
@@ -393,7 +360,7 @@ const GoEnvField = ({ label, value, onChange }: { label: string; value: string; 
 );
 
 const ManagedPath = ({ label, path, active }: { label: string; path: string; active: boolean }) => (
-  <div className="rounded-md bg-muted/40 p-2">
+  <div className="rounded-lg bg-muted/50 p-2">
     <div className="mb-1 flex items-center gap-2">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {active && (
@@ -442,19 +409,19 @@ const GoToolsTab = () => {
   return (
     <div className="space-y-4">
       {actionError && (
-        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-danger/10 p-3 text-xs text-danger">
           {actionError}
         </pre>
       )}
 
-      <div className="rounded-md border p-3">
+      <div className="rounded-lg border border-border bg-card p-3">
         <Label className="text-xs text-muted-foreground">{t('RuntimeDetail', 'GoToolsDirectory')}</Label>
         <p className="mt-1 break-all font-mono text-sm">{status.tools_bin_dir}</p>
       </div>
 
       <div className="space-y-2">
         {status.tools.map((tool) => (
-          <div key={tool.name} className="flex items-center justify-between gap-3 rounded-md border p-3">
+          <div key={tool.name} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-medium">{tool.label}</span>
@@ -521,13 +488,13 @@ const GoMaintenanceTab = () => {
   return (
     <div className="space-y-4">
       {actionError && (
-        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-danger/10 p-3 text-xs text-danger">
           {actionError}
         </pre>
       )}
       {message && <p className="text-sm text-muted-foreground">{message}</p>}
 
-      <div className="rounded-md border p-3">
+      <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-3 flex items-center gap-2 font-medium">
           <HardDrive className="h-4 w-4 text-muted-foreground" />
           {t('RuntimeDetail', 'GoCache')}
@@ -560,7 +527,7 @@ const GoMaintenanceTab = () => {
         )}
       </div>
 
-      <div className="rounded-md border p-3">
+      <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-2 flex items-center gap-2 font-medium">
           <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           {t('RuntimeDetail', 'GoSdkRepair')}
@@ -576,7 +543,7 @@ const GoMaintenanceTab = () => {
 };
 
 const CacheRow = ({ label, path, size }: { label: string; path: string | null; size?: number }) => (
-  <div className="grid gap-1 rounded-md bg-muted/40 p-2 md:grid-cols-[120px_1fr_auto] md:items-center">
+  <div className="grid gap-1 rounded-lg bg-muted/50 p-2 md:grid-cols-[120px_1fr_auto] md:items-center">
     <Label className="text-xs text-muted-foreground">{label}</Label>
     <span className="break-all font-mono text-xs">{path || '-'}</span>
     {typeof size === 'number' && <span className="text-xs text-muted-foreground">{formatBytes(size)}</span>}
@@ -587,73 +554,23 @@ export const GoDetail = ({ version }: { version: string }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('versions');
 
-  return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList>
-        <TabsTrigger value="versions">{t('Common', 'Versions')}</TabsTrigger>
-        <TabsTrigger value="tools">{t('RuntimeDetail', 'GoTools')}</TabsTrigger>
-        <TabsTrigger value="env">{t('RuntimeDetail', 'GoEnv')}</TabsTrigger>
-        <TabsTrigger value="maintenance">{t('RuntimeDetail', 'Maintenance')}</TabsTrigger>
-        <TabsTrigger value="shell">Shell</TabsTrigger>
-      </TabsList>
-      <TabsContent value="versions" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t('Common', 'Versions')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <GoVersionsTab />
-          </CardContent>
-        </Card>
-      </TabsContent>
-      <TabsContent value="tools" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t('RuntimeDetail', 'GoTools')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <GoToolsTab />
-          </CardContent>
-        </Card>
-      </TabsContent>
-      <TabsContent value="env" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t('RuntimeDetail', 'GoEnvSettings')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <GoEnvTab />
-          </CardContent>
-        </Card>
-      </TabsContent>
-      <TabsContent value="maintenance" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t('RuntimeDetail', 'Maintenance')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <GoMaintenanceTab />
-          </CardContent>
-        </Card>
-      </TabsContent>
-      <TabsContent value="shell" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t('RuntimeDetail', 'Environment', { name: 'Go' })}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <GoShellInfo version={version} />
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
-  );
+  const tabs = [
+    { value: 'versions', label: t('Common', 'Versions'), title: t('Common', 'Versions'), content: <GoVersionsTab /> },
+    { value: 'tools', label: t('RuntimeDetail', 'GoTools'), title: t('RuntimeDetail', 'GoTools'), content: <GoToolsTab /> },
+    { value: 'env', label: t('RuntimeDetail', 'GoEnv'), title: t('RuntimeDetail', 'GoEnvSettings'), content: <GoEnvTab /> },
+    { value: 'maintenance', label: t('RuntimeDetail', 'Maintenance'), title: t('RuntimeDetail', 'Maintenance'), content: <GoMaintenanceTab /> },
+    { value: 'shell', label: 'Shell', title: t('RuntimeDetail', 'Environment', { name: 'Go' }), content: <GoShellInfo version={version} /> },
+  ];
+
+  return <DetailTabs tabs={tabs} value={activeTab} onValueChange={setActiveTab} />;
 };
 
 const formatBytes = (bytes: number): string => {
+  if (!bytes) return '';
   if (bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
+

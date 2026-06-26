@@ -9,6 +9,8 @@ import { Loader2, Save, Plus, Trash2, Key } from 'lucide-react';
 import { useInstalledVersions, useDefaultVersion } from '@/hooks/use-runtimes';
 import { useTranslation } from '@/i18n/use-translation';
 import { tauriInvoke } from '@/lib/tauri';
+import { RuntimeHeader } from '@/components/runtime/runtime-header';
+import { MysqlIcon } from '@/components/runtime/runtime-icons';
 
 interface MysqlUser { user: string; host: string; }
 interface MysqlDatabase { name: string; }
@@ -42,15 +44,15 @@ const MyCnfEditor = ({ version }: { version: string }) => {
     finally { setSaving(false); }
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm">{msg && <span className={msg.startsWith(t('Common', 'ErrorPrefix', { message: '' })) ? 'text-red-500' : 'text-green-500'}>{msg}</span>}{content !== original && !msg && <span className="text-yellow-500">{t('Common', 'Unsaved')}</span>}</span>
-        <Button onClick={save} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />{t('Common', 'Save')}</Button>
+        <span className="text-sm">{msg && <span className={msg.startsWith(t('Common', 'ErrorPrefix', { message: '' })) ? 'text-danger' : 'text-success'}>{msg}</span>}{content !== original && !msg && <span className="text-warning">{t('Common', 'Unsaved')}</span>}</span>
+        <Button onClick={save} disabled={saving || content === original}><Save className="size-3.5 mr-1" />{t('Common', 'Save')}</Button>
       </div>
-      <textarea className="w-full h-72 font-mono text-xs bg-muted p-3 rounded-md border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
+      <textarea className="w-full h-80 font-mono text-xs bg-code-bg p-3 rounded-lg border border-border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
     </div>
   );
 };
@@ -91,22 +93,22 @@ const UserManager = ({ version }: { version: string }) => {
     setChangingPw(null); setNewPw('');
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{t('RuntimeDetail', 'UserCount', { count: users.length })}</span>
-        <Button variant="outline" onClick={() => setShowForm(!showForm)}><Plus className="h-3 w-3 mr-1" />{t('Common', 'AddUser')}</Button>
+        <Button variant="outline" onClick={() => setShowForm(!showForm)}><Plus className="size-3.5 mr-1" />{t('Common', 'AddUser')}</Button>
       </div>
 
       {showForm && (
-        <div className="grid grid-cols-3 gap-2 p-3 border rounded-md">
+        <div className="grid grid-cols-3 gap-2 p-3 rounded-lg border border-border bg-card">
           <div><Label className="text-xs">{t('RuntimeDetail', 'Username')}</Label><Input value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} /></div>
           <div><Label className="text-xs">{t('RuntimeDetail', 'Password')}</Label><Input type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} /></div>
           <div><Label className="text-xs">{t('RuntimeDetail', 'Host')}</Label><Input value={newUser.host} onChange={e => setNewUser({ ...newUser, host: e.target.value })} /></div>
           <div className="col-span-3 flex gap-2">
-            <Button onClick={create} disabled={!newUser.username}><Plus className="h-3 w-3 mr-1" />{t('Common', 'Create')}</Button>
+            <Button onClick={create} disabled={!newUser.username}><Plus className="size-3.5 mr-1" />{t('Common', 'Create')}</Button>
             <Button variant="ghost" onClick={() => setShowForm(false)}>{t('Common', 'Cancel')}</Button>
           </div>
         </div>
@@ -114,7 +116,7 @@ const UserManager = ({ version }: { version: string }) => {
 
       <div className="space-y-1">
         {users.map(u => (
-          <div key={`${u.user}@${u.host}`} className="flex items-center justify-between p-2 border rounded-md">
+          <div key={`${u.user}@${u.host}`} className="flex items-center justify-between p-2 rounded-lg border border-border bg-card">
             <div>
               <span className="font-mono text-sm">{u.user}</span>
               <span className="text-xs text-muted-foreground ml-2">@{u.host}</span>
@@ -129,11 +131,11 @@ const UserManager = ({ version }: { version: string }) => {
               ) : (
                 <>
                   <Button variant="ghost" className="h-7" onClick={() => { setChangingPw(`${u.user}@${u.host}`); setNewPw(''); }}>
-                    <Key className="h-3 w-3" />
+                    <Key className="size-3.5" />
                   </Button>
                   {u.user !== 'root' && u.user !== 'mysql.session' && u.user !== 'mysql.sys' && (
                     <Button variant="ghost" className="h-7" onClick={() => drop(u.user, u.host)}>
-                      <Trash2 className="h-3 w-3 text-red-500" />
+                      <Trash2 className="size-3.5 text-danger" />
                     </Button>
                   )}
                 </>
@@ -176,21 +178,21 @@ const DatabaseManager = ({ version }: { version: string }) => {
     catch (e) { setError(String(e)); }
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-3">
       {error && <div className="p-2 rounded bg-destructive/10 text-destructive text-xs">{error}</div>}
       <div className="flex gap-2">
         <Input className="flex-1" placeholder={t('RuntimeDetail', 'DatabaseName')} value={newDb} onChange={e => setNewDb(e.target.value)} />
-        <Button onClick={create} disabled={!newDb}><Plus className="h-3 w-3 mr-1" />{t('Common', 'Create')}</Button>
+        <Button onClick={create} disabled={!newDb}><Plus className="size-3.5 mr-1" />{t('Common', 'Create')}</Button>
       </div>
       <div className="grid grid-cols-3 gap-1">
         {dbs.map(db => (
-          <div key={db.name} className="flex items-center justify-between p-2 border rounded-md text-sm">
+          <div key={db.name} className="flex items-center justify-between p-2 rounded-lg border border-border bg-card text-sm">
             <span className="font-mono">{db.name}</span>
             {!['information_schema', 'mysql', 'performance_schema', 'sys'].includes(db.name) && (
-              <Button variant="ghost" className="h-6" onClick={() => drop(db.name)}><Trash2 className="h-3 w-3 text-red-500" /></Button>
+              <Button variant="ghost" className="h-6" onClick={() => drop(db.name)}><Trash2 className="size-3.5 text-danger" /></Button>
             )}
           </div>
         ))}
@@ -204,11 +206,11 @@ const DatabaseManager = ({ version }: { version: string }) => {
 const VersionsTab = () => {
   const { t } = useTranslation();
   const { data: installed, isLoading } = useInstalledVersions('mysql');
-  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   return (
     <div className="space-y-2">
       {installed?.length ? installed.map((v: any) => (
-        <div key={v.version} className="flex items-center justify-between p-3 rounded-md border">
+        <div key={v.version} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
           <span className="font-mono text-sm">{v.version}</span>
           <span className="text-xs text-muted-foreground">{v.size ? `${(v.size / 1_048_576).toFixed(0)} MB` : ''}</span>
         </div>
@@ -228,11 +230,12 @@ export const MysqlRuntimeDetail = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <span className="text-2xl">🐬</span>
-        <h1 className="text-2xl font-bold">MySQL</h1>
-        {ver && <Badge variant="outline">{t('Common', 'DefaultValue', { value: ver })}</Badge>}
-      </div>
+      <RuntimeHeader
+        icon={<MysqlIcon className="size-5" />}
+        name="MySQL"
+        version={ver}
+        actions={ver ? <Badge variant="outline">{t('Common', 'DefaultValue', { value: ver })}</Badge> : undefined}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>

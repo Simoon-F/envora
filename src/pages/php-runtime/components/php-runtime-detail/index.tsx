@@ -9,6 +9,8 @@ import { useInstalledVersions, useAvailableVersions, useDefaultVersion, useInsta
 import { useTranslation } from '@/i18n/use-translation';
 import type { RuntimeVersion, VersionInfo } from '@/types/runtime';
 import { tauriInvoke } from '@/lib/tauri';
+import { RuntimeHeader } from '@/components/runtime/runtime-header';
+import { PhpIcon } from '@/components/runtime/runtime-icons';
 
 interface ExtensionInfo {
   name: string;
@@ -63,23 +65,23 @@ const PhpIniEditor = ({ version }: { version: string }) => {
   const isModified = content !== original;
 
   if (loading) {
-    return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          {message && <span className="text-green-500">{message}</span>}
-          {isModified && !message && <span className="text-yellow-500">{t('Common', 'UnsavedChanges')}</span>}
+          {message && <span className="text-success">{message}</span>}
+          {isModified && !message && <span className="text-warning">{t('Common', 'UnsavedChanges')}</span>}
         </span>
         <Button size="sm" onClick={handleSave} disabled={saving || !isModified}>
-          <Save className="h-3 w-3 mr-1" />
+          <Save className="size-3.5 mr-1" />
           {saving ? t('Common', 'Saving') : t('Common', 'Save')}
         </Button>
       </div>
       <textarea
-        className="w-full h-96 font-mono text-xs bg-muted p-3 rounded-md border resize-y"
+        className="w-full h-96 font-mono text-xs bg-code-bg p-3 rounded-lg border border-border resize-y"
         value={content || ''}
         onChange={(e) => setContent(e.target.value)}
         spellCheck={false}
@@ -131,7 +133,7 @@ const ExtensionManager = ({ version }: { version: string }) => {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   }
 
   const builtins = new Set([
@@ -151,7 +153,7 @@ const ExtensionManager = ({ version }: { version: string }) => {
         <h4 className="text-sm font-medium mb-2">{t('RuntimeDetail', 'LoadableExtensions')}</h4>
         <div className="grid grid-cols-2 gap-1">
           {loadable.map((ext) => (
-            <div key={ext.filename} className="flex items-center justify-between p-2 rounded-md border text-sm">
+            <div key={ext.filename} className="flex items-center justify-between p-2 rounded-lg border border-border bg-card text-sm">
               <div className="flex items-center gap-2">
                 <Switch
                   checked={ext.enabled}
@@ -159,7 +161,7 @@ const ExtensionManager = ({ version }: { version: string }) => {
                   disabled={toggling === ext.filename}
                 />
                 <span>{ext.name}</span>
-                {toggling === ext.filename && <Loader2 className="h-3 w-3 animate-spin" />}
+                {toggling === ext.filename && <Loader2 className="size-3.5 animate-spin" />}
               </div>
               <span className="text-xs text-muted-foreground">{ext.size}</span>
             </div>
@@ -239,15 +241,15 @@ const VersionsTab = () => {
     <div className="space-y-4">
       {/* Installed versions */}
       {isLoading ? (
-        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
+        <div className="flex justify-center py-4"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
       ) : installed && installed.length > 0 ? (
         <div className="space-y-2">
           {installed.map((v: RuntimeVersion) => (
-            <div key={v.version} className="flex items-center justify-between p-3 rounded-md border">
+            <div key={v.version} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm">{v.version}</span>
                 {v.version === defaultVersion && (
-                  <Badge><Check className="h-3 w-3 mr-1" />{t('Common', 'Default')}</Badge>
+                  <Badge><Check className="size-3.5 mr-1" />{t('Common', 'Default')}</Badge>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -258,7 +260,7 @@ const VersionsTab = () => {
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" onClick={() => handleUninstall(v.version)}>
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="size-3.5" />
                 </Button>
               </div>
             </div>
@@ -289,12 +291,12 @@ const VersionsTab = () => {
         {available?.filter((v: VersionInfo) => !v.is_installed).map((v: VersionInfo) => (
           <div
             key={v.version}
-            className="flex items-center justify-between p-2 rounded-md border hover:bg-muted cursor-pointer mb-1"
+            className="flex items-center justify-between p-2 rounded-lg border border-border bg-card hover:bg-muted cursor-pointer mb-1"
             onClick={() => handleInstall(v.version)}
           >
             <span className="font-mono text-sm">{v.version}</span>
             <Button size="sm" variant="ghost" disabled={isInstalling}>
-              <Download className="h-3 w-3" />
+              <Download className="size-3.5" />
             </Button>
           </div>
         ))}
@@ -346,13 +348,13 @@ const PeclInstaller = ({ version }: { version: string }) => {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   }
 
   return (
     <div className="space-y-4">
       {error && (
-        <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm whitespace-pre-wrap">
+        <div className="p-3 rounded-lg bg-danger/10 text-danger text-sm whitespace-pre-wrap">
           {error}
         </div>
       )}
@@ -363,12 +365,12 @@ const PeclInstaller = ({ version }: { version: string }) => {
 
       <div className="grid grid-cols-2 gap-2">
         {extensions.map((ext) => (
-          <div key={ext.name} className="flex items-center justify-between p-3 rounded-md border">
+          <div key={ext.name} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm">{ext.name}</span>
                 {ext.installed && (
-                  <span className="flex items-center gap-1 text-xs text-green-600">
+                  <span className="flex items-center gap-1 text-xs text-success">
                     <Circle className="h-2 w-2 fill-green-600" /> {t('Common', 'Installed')}
                   </span>
                 )}
@@ -382,9 +384,9 @@ const PeclInstaller = ({ version }: { version: string }) => {
               onClick={() => handleInstall(ext.name)}
             >
               {installing === ext.name ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                <Loader2 className="size-3.5 animate-spin mr-1" />
               ) : (
-                <PackagePlus className="h-3 w-3 mr-1" />
+                <PackagePlus className="size-3.5 mr-1" />
               )}
               {ext.installed ? t('Common', 'Installed') : t('Common', 'Install')}
             </Button>
@@ -410,11 +412,12 @@ export const PhpRuntimeDetail = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <span className="text-2xl">🐘</span>
-        <h1 className="text-2xl font-bold">PHP</h1>
-        {defaultVer && <Badge variant="outline">{t('Common', 'DefaultValue', { value: defaultVer })}</Badge>}
-      </div>
+      <RuntimeHeader
+        icon={<PhpIcon className="size-5" />}
+        name="PHP"
+        version={defaultVer}
+        actions={defaultVer ? <Badge variant="outline">{t('Common', 'DefaultValue', { value: defaultVer })}</Badge> : undefined}
+      />
 
       {/* Version selector */}
       {defaultVer && (

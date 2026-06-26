@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { useInstalledVersions, useDefaultVersion } from '@/hooks/use-runtimes';
 import type { RuntimeType } from '@/types/runtime';
 import { PHPDetail } from '@/pages/php-runtime/components/php-detail';
@@ -9,16 +8,17 @@ import { JavaDetail } from '@/pages/java-runtime/components/java-detail';
 import { NodeDetail } from '@/pages/node-runtime/components/node-detail';
 import { GoDetail } from '@/pages/go-runtime/components/go-detail';
 import { useTranslation } from '@/i18n/use-translation';
-import { GoLogo } from '@/components/runtime/go-logo';
+import { RuntimeIcon } from '@/components/runtime/runtime-icons';
+import { RuntimeHeader } from '@/components/runtime/runtime-header';
 import { RuntimeItem, type RuntimeItemInfo } from './components/runtime-item';
 
 const runtimes: RuntimeItemInfo[] = [
-  { type: 'php', name: 'PHP', icon: '🐘' },
-  { type: 'nginx', name: 'Nginx', icon: '🌐' },
-  { type: 'mysql', name: 'MySQL', icon: '🐬' },
-  { type: 'java', name: 'Java', icon: '☕' },
-  { type: 'node', name: 'Node.js', icon: '⬢' },
-  { type: 'go', name: 'Go', icon: <GoLogo className="h-4 w-11" /> },
+  { type: 'php', name: 'PHP', icon: <RuntimeIcon type="php" className="size-4" /> },
+  { type: 'nginx', name: 'Nginx', icon: <RuntimeIcon type="nginx" className="size-4" /> },
+  { type: 'mysql', name: 'MySQL', icon: <RuntimeIcon type="mysql" className="size-4" /> },
+  { type: 'java', name: 'Java', icon: <RuntimeIcon type="java" className="size-4" /> },
+  { type: 'node', name: 'Node.js', icon: <RuntimeIcon type="node" className="size-4" /> },
+  { type: 'go', name: 'Go', icon: <RuntimeIcon type="go" className="h-4 w-9" /> },
 ];
 
 export const Runtimes = () => {
@@ -87,25 +87,31 @@ export const Runtimes = () => {
 
   return (
     <div className="flex h-full">
-      {/* Sidebar */}
-      <div className="w-56 border-r p-3 space-y-1 flex-shrink-0">
-        <h2 className="text-sm font-semibold px-3 py-2 text-muted-foreground">{t('Runtimes', 'Runtimes')}</h2>
-        {runtimes.map((runtime) => (
-          <RuntimeItem
-            key={runtime.type}
-            runtime={runtime}
-            selected={selected === runtime.type}
-            onSelect={() => setSelected(runtime.type)}
-          />
-        ))}
-      </div>
-      {/* Detail Panel */}
-      <div className="flex-1 p-4 overflow-auto">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="flex h-8 min-w-8 items-center text-2xl">{runtimeInfo.icon}</span>
-          {runtimeInfo.type !== 'go' && <h1 className="text-xl font-bold">{runtimeInfo.name}</h1>}
-          {version && <Badge variant="outline" className="ml-2">v{version}</Badge>}
+      {/* Runtime selector */}
+      <aside className="w-60 shrink-0 border-r border-border bg-muted/20 p-3">
+        <h2 className="px-3 pb-2 pt-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+          {t('Runtimes', 'Runtimes')}
+        </h2>
+        <div className="space-y-1">
+          {runtimes.map((runtime) => (
+            <RuntimeItem
+              key={runtime.type}
+              runtime={runtime}
+              selected={selected === runtime.type}
+              onSelect={() => setSelected(runtime.type)}
+            />
+          ))}
         </div>
+      </aside>
+
+      {/* Detail panel */}
+      <div className="flex-1 overflow-auto p-6">
+        <RuntimeHeader
+          icon={runtimeInfo.icon}
+          name={runtimeInfo.name}
+          version={version}
+          className="mb-6"
+        />
         <div className="p-1">{renderDetail()}</div>
       </div>
     </div>

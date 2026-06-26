@@ -1,15 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Download, Trash2, Check, Save, PackagePlus, Circle } from 'lucide-react';
-import { useInstalledVersions, useAvailableVersions, useDefaultVersion, useStartRuntimeInstall, useUninstallVersion, useSwitchDefault } from '@/hooks/use-runtimes';
+import { Loader2, PackagePlus, Circle, Package } from 'lucide-react';
+import {
+  useInstalledVersions,
+  useAvailableVersions,
+  useDefaultVersion,
+  useStartRuntimeInstall,
+  useUninstallVersion,
+  useSwitchDefault,
+} from '@/hooks/use-runtimes';
 import { useTranslation } from '@/i18n/use-translation';
 import { useOperationsStore } from '@/stores/operations';
 import type { RuntimeVersion, VersionInfo } from '@/types/runtime';
 import { tauriInvoke } from '@/lib/tauri';
+import { VersionRow } from '@/components/runtime/version-row';
+import { InstallableVersionRow } from '@/components/runtime/installable-version-row';
+import { ProgressBlock } from '@/components/runtime/progress-block';
+import { ConfigEditor } from '@/components/runtime/config-editor';
+import { DetailTabs } from '@/components/runtime/detail-tabs';
+import { EmptyState } from '@/components/runtime/empty-state';
 
 interface ExtensionInfo { name: string; filename: string; enabled: boolean; size: string; }
 interface PeclInfo { name: string; description: string; installed: boolean; }
@@ -26,6 +35,7 @@ const VersionsTab = () => {
   const { mutate: switchDefault } = useSwitchDefault();
   const operations = useOperationsStore((state) => state.operations);
   const upsertOperation = useOperationsStore((state) => state.upsert);
+  const removeOperation = useOperationsStore((state) => state.remove);
   const phpOperations = Object.values(operations)
     .filter((operation) => operation.kind === 'runtime_install' && operation.target.runtime === 'php')
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
@@ -48,92 +58,85 @@ const VersionsTab = () => {
     upsertOperation(operation);
   };
 
+  const installable = (available ?? []).filter((v: VersionInfo) => !v.is_installed);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      {isLoading ? <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div> : (
-        <>
-          {installed && installed.length > 0 ? (
-            <div className="space-y-2">
-              {installed.map((v: RuntimeVersion) => (
-                <div key={v.version} className="flex items-center justify-between p-3 rounded-md border">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm">{v.version}</span>
-                    {v.version === defaultVersion && <Badge><Check className="h-3 w-3 mr-1" />{t('Common', 'Default')}</Badge>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{formatBytes(v.size)}</span>
-                    {v.version !== defaultVersion && (
-                      <Button variant="ghost" size="sm" onClick={async () => { await switchDefault({ runtime: 'php', version: v.version }); mutate(); }}>{t('Common', 'SetDefault')}</Button>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={async () => { await uninstallVersion({ runtime: 'php', version: v.version }); mutate(); }}><Trash2 className="h-3 w-3" /></Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : <p className="text-sm text-muted-foreground">{t('RuntimeDetail', 'NoVersionsInstalled')}</p>}
-          {visibleOperation && (
-            <div className="space-y-1">
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${visibleOperation.status === 'failed' ? 'bg-destructive' : 'bg-primary'}`}
-                  style={{ width: `${visibleOperation.percent}%` }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                PHP {visibleOperation.target.version}：{visibleOperation.error || visibleOperation.message} ({visibleOperation.percent.toFixed(0)}%)
-              </p>
-            </div>
-          )}
-          <div>
-            <h4 className="text-sm font-medium mb-2">{t('RuntimeDetail', 'AvailableVersions')}</h4>
-            {available?.filter((v: VersionInfo) => !v.is_installed).map((v: VersionInfo) => (
-              <div key={v.version} className="flex items-center justify-between p-2 rounded-md border hover:bg-muted cursor-pointer mb-1" onClick={() => handleInstall(v.version)}>
-                <span className="font-mono text-sm">{v.version}</span>
-                <Button size="sm" variant="ghost" disabled={isInstalling}><Download className="h-3 w-3" /></Button>
-              </div>
-            ))}
-          </div>
-        </>
+    <div className="space-y-5">
+      {installed && installed.length > 0 ? (
+        <div className="space-y-2">
+          {installed.map((v: RuntimeVersion) => (
+            <VersionRow
+              key={v.version}
+              label={v.version}
+              size={v.size}
+              isDefault={v.version === defaultVersion}
+              onSetDefault={
+                v.version !== defaultVersion
+                  ? async () => {
+                      await switchDefault({ runtime: 'php', version: v.version });
+                      mutate();
+                    }
+                  : undefined
+              }
+              onUninstall={async () => {
+                await uninstallVersion({ runtime: 'php', version: v.version });
+                mutate();
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon={<Package className="size-5" />}
+          title={t('RuntimeDetail', 'NoVersionsInstalled')}
+        />
       )}
+
+      {visibleOperation && (
+        <ProgressBlock
+          label={`PHP ${visibleOperation.target.version}`}
+          message={visibleOperation.message}
+          error={visibleOperation.error}
+          percent={visibleOperation.percent}
+          status={visibleOperation.status}
+          onClear={() => removeOperation(visibleOperation.id)}
+        />
+      )}
+
+      <div>
+        <h4 className="mb-2 text-sm font-medium">{t('RuntimeDetail', 'AvailableVersions')}</h4>
+        <div className="space-y-1.5">
+          {installable.map((v: VersionInfo) => (
+            <InstallableVersionRow
+              key={v.version}
+              label={v.version}
+              isInstalling={isInstalling}
+              isThisInstalling={runningOperation?.target.version === v.version}
+              onInstall={() => handleInstall(v.version)}
+            />
+          ))}
+          {installable.length === 0 && (
+            <p className="text-sm text-muted-foreground">{t('RuntimeDetail', 'AllAvailableInstalled')}</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
 
 // ── php.ini Editor ─────────────────────────────────────────────────
 
-const PhpIniEditor = ({ version }: { version: string }) => {
-  const { t } = useTranslation();
-  const [content, setContent] = useState<string | null>(null);
-  const [original, setOriginal] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-
-  useEffect(() => { loadConfig(); }, [version]);
-  const loadConfig = async () => {
-    setLoading(true);
-    try { const t = await tauriInvoke<string>('get_php_config', { version }); setContent(t); setOriginal(t); }
-    catch (e) { setContent(`; ${String(e)}`); }
-    finally { setLoading(false); }
-  };
-  const handleSave = async () => {
-    if (!content) return; setSaving(true); setMessage('');
-    try { await tauriInvoke('save_php_config', { version, content }); setOriginal(content); setMessage(t('Common', 'Saved')); setTimeout(() => setMessage(''), 2000); }
-    catch (e) { setMessage(t('Common', 'SaveFailed', { message: String(e) })); }
-    finally { setSaving(false); }
-  };
-
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm">{message && <span className="text-green-500">{message}</span>}{content !== original && !message && <span className="text-yellow-500">{t('Common', 'Unsaved')}</span>}</span>
-        <Button size="sm" onClick={handleSave} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />{t('Common', 'Save')}</Button>
-      </div>
-      <textarea className="w-full h-96 font-mono text-xs bg-muted p-3 rounded-md border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
-    </div>
-  );
-};
+const PhpIniEditor = ({ version }: { version: string }) => (
+  <ConfigEditor version={version} loadCommand="get_php_config" saveCommand="save_php_config" />
+);
 
 // ── Extensions ─────────────────────────────────────────────────────
 
@@ -158,34 +161,37 @@ const ExtensionManager = ({ version }: { version: string }) => {
     finally { setToggling(null); }
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   const builtins = new Set(['Core', 'ctype', 'curl', 'date', 'dom', 'fileinfo', 'filter', 'hash', 'iconv', 'json', 'libxml', 'mbstring', 'mysqli', 'mysqlnd', 'openssl', 'pcre', 'PDO', 'pdo_mysql', 'pdo_sqlite', 'Phar', 'posix', 'random', 'Reflection', 'session', 'SimpleXML', 'SPL', 'sqlite3', 'standard', 'tokenizer', 'xml', 'xmlreader', 'xmlwriter', 'zlib']);
   const loadable = extensions.filter(e => !builtins.has(e.name));
   const builtinsList = extensions.filter(e => builtins.has(e.name));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <h4 className="text-sm font-medium mb-2">{t('RuntimeDetail', 'LoadableExtensions')} ({loadable.length})</h4>
-        <div className="grid grid-cols-2 gap-1">
+        <h4 className="mb-2 text-sm font-medium">{t('RuntimeDetail', 'LoadableExtensions')} ({loadable.length})</h4>
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
           {loadable.map(ext => (
-            <div key={ext.filename} className="flex items-center justify-between p-2 rounded-md border text-sm">
+            <div key={ext.filename} className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
               <div className="flex items-center gap-2">
                 <Switch checked={ext.enabled} onCheckedChange={() => handleToggle(ext)} disabled={toggling === ext.filename} />
                 <span>{ext.name}</span>
-                {toggling === ext.filename && <Loader2 className="h-3 w-3 animate-spin" />}
+                {toggling === ext.filename && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
               </div>
-              <span className="text-xs text-muted-foreground">{ext.size}</span>
+              <span className="text-xs tabular-nums text-muted-foreground">{ext.size}</span>
             </div>
           ))}
-          {loadable.length === 0 && <p className="text-sm text-muted-foreground col-span-2">{t('RuntimeDetail', 'NoLoadableExtensions')}</p>}
+          {loadable.length === 0 && <p className="text-sm text-muted-foreground sm:col-span-2">{t('RuntimeDetail', 'NoLoadableExtensions')}</p>}
         </div>
       </div>
       <div>
-        <h4 className="text-sm font-medium mb-2">{t('RuntimeDetail', 'BuiltInExtensions')} ({builtinsList.length})</h4>
-        <div className="grid grid-cols-3 gap-1">
+        <h4 className="mb-2 text-sm font-medium">{t('RuntimeDetail', 'BuiltInExtensions')} ({builtinsList.length})</h4>
+        <div className="grid grid-cols-3 gap-1.5">
           {builtinsList.map(ext => (
-            <div key={ext.name} className="flex items-center gap-1 text-xs text-muted-foreground p-1"><span className="w-1.5 h-1.5 rounded-full bg-green-400" />{ext.name}</div>
+            <div key={ext.name} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="size-1.5 rounded-full bg-success" />
+              {ext.name}
+            </div>
           ))}
         </div>
       </div>
@@ -217,27 +223,44 @@ const PeclInstaller = ({ version }: { version: string }) => {
     finally { setInstalling(null); }
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   return (
     <div className="space-y-4">
-      {error && <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm whitespace-pre-wrap">{error}</div>}
-      <div className="grid grid-cols-2 gap-2">
+      {error && <div className="rounded-lg bg-danger/10 p-3 text-sm text-danger whitespace-pre-wrap">{error}</div>}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {extensions.map(ext => (
-          <div key={ext.name} className="flex items-center justify-between p-3 rounded-md border">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm">{ext.name}</span>
-                {ext.installed && <span className="flex items-center gap-1 text-xs text-green-600"><Circle className="h-2 w-2 fill-green-600" />{t('Common', 'Installed')}</span>}
-              </div>
-              <p className="text-xs text-muted-foreground">{ext.description}</p>
-            </div>
-            <Button size="sm" variant={ext.installed ? "ghost" : "outline"} disabled={ext.installed || installing !== null} onClick={() => handleInstall(ext.name)}>
-              {installing === ext.name ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <PackagePlus className="h-3 w-3 mr-1" />}
-              {ext.installed ? t('Common', 'Installed') : t('Common', 'Install')}
-            </Button>
-          </div>
+          <PeclCard key={ext.name} ext={ext} installing={installing} onInstall={handleInstall} />
         ))}
       </div>
+    </div>
+  );
+};
+
+const PeclCard = ({ ext, installing, onInstall }: { ext: PeclInfo; installing: string | null; onInstall: (name: string) => void }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-sm">{ext.name}</span>
+          {ext.installed && (
+            <span className="flex items-center gap-1 text-xs text-success">
+              <Circle className="size-2 fill-success" />
+              {t('Common', 'Installed')}
+            </span>
+          )}
+        </div>
+        <p className="truncate text-xs text-muted-foreground">{ext.description}</p>
+      </div>
+      <button
+        type="button"
+        disabled={ext.installed || installing !== null}
+        onClick={() => onInstall(ext.name)}
+        className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+      >
+        {installing === ext.name ? <Loader2 className="size-3.5 animate-spin" /> : <PackagePlus className="size-3.5" />}
+        {ext.installed ? t('Common', 'Installed') : t('Common', 'Install')}
+      </button>
     </div>
   );
 };
@@ -247,26 +270,13 @@ const PeclInstaller = ({ version }: { version: string }) => {
 export const PHPDetail = ({ version }: { version: string }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('versions');
-  return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList>
-        <TabsTrigger value="versions">{t('Common', 'Versions')}</TabsTrigger>
-        <TabsTrigger value="ini">php.ini</TabsTrigger>
-        <TabsTrigger value="extensions">{t('Common', 'Extensions')}</TabsTrigger>
-        <TabsTrigger value="pecl">PECL</TabsTrigger>
-      </TabsList>
-      <TabsContent value="versions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">{t('Common', 'Versions')}</CardTitle></CardHeader><CardContent><VersionsTab /></CardContent></Card></TabsContent>
-      <TabsContent value="ini" className="mt-4"><Card><CardHeader><CardTitle className="text-base">php.ini</CardTitle></CardHeader><CardContent><PhpIniEditor key={version} version={version} /></CardContent></Card></TabsContent>
-      <TabsContent value="extensions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">{t('Common', 'Extensions')}</CardTitle></CardHeader><CardContent><ExtensionManager key={version} version={version} /></CardContent></Card></TabsContent>
-      <TabsContent value="pecl" className="mt-4"><Card><CardHeader><CardTitle className="text-base">PECL {t('Common', 'Extensions')}</CardTitle></CardHeader><CardContent><PeclInstaller key={version} version={version} /></CardContent></Card></TabsContent>
-    </Tabs>
-  );
-};
 
-const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  const tabs = [
+    { value: 'versions', label: t('Common', 'Versions'), title: t('Common', 'Versions'), content: <VersionsTab /> },
+    { value: 'ini', label: 'php.ini', title: 'php.ini', content: <PhpIniEditor key={version} version={version} /> },
+    { value: 'extensions', label: t('Common', 'Extensions'), title: t('Common', 'Extensions'), content: <ExtensionManager key={version} version={version} /> },
+    { value: 'pecl', label: 'PECL', title: `PECL ${t('Common', 'Extensions')}`, content: <PeclInstaller key={version} version={version} /> },
+  ];
+
+  return <DetailTabs tabs={tabs} value={activeTab} onValueChange={setActiveTab} />;
 };

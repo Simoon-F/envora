@@ -11,6 +11,8 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { useInstalledVersions, useDefaultVersion } from '@/hooks/use-runtimes';
 import { useTranslation } from '@/i18n/use-translation';
 import { tauriInvoke } from '@/lib/tauri';
+import { RuntimeHeader } from '@/components/runtime/runtime-header';
+import { NginxIcon } from '@/components/runtime/runtime-icons';
 
 interface VirtualHost {
   id: string;
@@ -62,18 +64,18 @@ const NginxConfEditor = ({ version }: { version: string }) => {
     finally { setReloading(false); }
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm">{msg && <span className={msg.startsWith(t('Common', 'ErrorPrefix', { message: '' })) || msg.startsWith(t('RuntimeDetail', 'ReloadFailed', { message: '' })) ? 'text-red-500' : 'text-green-500'}>{msg}</span>}{content !== original && !msg && <span className="text-yellow-500">{t('Common', 'Unsaved')}</span>}</span>
+        <span className="text-sm">{msg && <span className={msg.startsWith(t('Common', 'ErrorPrefix', { message: '' })) || msg.startsWith(t('RuntimeDetail', 'ReloadFailed', { message: '' })) ? 'text-danger' : 'text-success'}>{msg}</span>}{content !== original && !msg && <span className="text-warning">{t('Common', 'Unsaved')}</span>}</span>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={reload} disabled={reloading}><RefreshCw className="h-3 w-3 mr-1" />{t('Common', 'Reload')}</Button>
-          <Button onClick={save} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />{t('Common', 'Save')}</Button>
+          <Button variant="outline" onClick={reload} disabled={reloading}><RefreshCw className="size-3.5 mr-1" />{t('Common', 'Reload')}</Button>
+          <Button onClick={save} disabled={saving || content === original}><Save className="size-3.5 mr-1" />{t('Common', 'Save')}</Button>
         </div>
       </div>
-      <textarea className="w-full h-72 font-mono text-xs bg-muted p-3 rounded-md border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
+      <textarea className="w-full h-80 font-mono text-xs bg-code-bg p-3 rounded-lg border border-border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
     </div>
   );
 };
@@ -191,17 +193,17 @@ const VHostManager = ({ version }: { version: string }) => {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{t('RuntimeDetail', 'SiteCount', { count: vhosts.length })}</span>
-        <Button variant="outline" onClick={() => setShowForm(!showForm)}><Plus className="h-3 w-3 mr-1" />{t('Common', 'AddSite')}</Button>
+        <Button variant="outline" onClick={() => setShowForm(!showForm)}><Plus className="size-3.5 mr-1" />{t('Common', 'AddSite')}</Button>
       </div>
 
       {showForm && (
-        <div className="grid grid-cols-2 gap-2 p-3 border rounded-md">
+        <div className="grid grid-cols-2 gap-2 p-3 rounded-lg border border-border bg-card">
           <div><Label className="text-xs">{t('RuntimeDetail', 'Domain')}</Label><Input placeholder="myapp.test" value={form.domain} onChange={e => setForm({ ...form, domain: e.target.value })} /></div>
           <div><Label className="text-xs">{t('RuntimeDetail', 'Port')}</Label><Input type="number" value={form.port} onChange={e => setForm({ ...form, port: parseInt(e.target.value) || 80 })} /></div>
           <div className="col-span-2">
@@ -213,13 +215,13 @@ const VHostManager = ({ version }: { version: string }) => {
                 onChange={e => setForm({ ...form, root_dir: e.target.value })}
               />
               <Button type="button" variant="outline" onClick={chooseRootDir} title={t('RuntimeDetail', 'ChooseProjectRoot')}>
-                <FolderOpen className="h-3 w-3 mr-1" />{t('Common', 'Select')}
+                <FolderOpen className="size-3.5 mr-1" />{t('Common', 'Select')}
               </Button>
             </div>
           </div>
-          {formError && <pre className="col-span-2 max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-red-500/10 p-2 text-xs text-red-600">{formError}</pre>}
+          {formError && <pre className="col-span-2 max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-danger/10 p-2 text-xs text-danger">{formError}</pre>}
           <div className="col-span-2 flex gap-2">
-            <Button onClick={create} disabled={!form.domain || !form.root_dir}><Plus className="h-3 w-3 mr-1" />{t('Common', 'Create')}</Button>
+            <Button onClick={create} disabled={!form.domain || !form.root_dir}><Plus className="size-3.5 mr-1" />{t('Common', 'Create')}</Button>
             <Button variant="ghost" onClick={() => setShowForm(false)}>{t('Common', 'Cancel')}</Button>
           </div>
         </div>
@@ -227,14 +229,14 @@ const VHostManager = ({ version }: { version: string }) => {
 
       <div className="space-y-2">
         {vhosts.map(v => (
-          <div key={v.id} className="p-3 border rounded-md space-y-2">
+          <div key={v.id} className="p-3 rounded-lg border border-border bg-card space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-muted-foreground" />
+                <Globe className="size-4 text-muted-foreground" />
                 <a href={`http://${v.domain}`} target="_blank" className="font-mono text-sm hover:underline" rel="noreferrer">{v.domain}</a>
                 <Badge variant="outline" className="text-xs">:{v.port}</Badge>
               </div>
-              <Button variant="ghost" className="h-7" onClick={() => remove(v.id)}><Trash2 className="h-3 w-3 text-red-500" /></Button>
+              <Button variant="ghost" className="h-7" onClick={() => remove(v.id)}><Trash2 className="size-3.5 text-danger" /></Button>
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
               <div>{t('RuntimeDetail', 'RootDirectory')}: <code>{v.root_dir}</code></div>
@@ -242,7 +244,7 @@ const VHostManager = ({ version }: { version: string }) => {
             </div>
             <div className="flex gap-2">
               <Button variant="outline" className="h-7 text-xs" onClick={() => openVhostConfig(v)}>
-                <FileText className="h-3 w-3 mr-1" />{t('Common', 'Config')}
+                <FileText className="size-3.5 mr-1" />{t('Common', 'Config')}
               </Button>
               {!v.hosts_managed ? (
                 <Button variant="outline" className="h-7 text-xs" onClick={() => addHosts(v.domain)}>{t('Common', 'HostsAdd')}</Button>
@@ -257,9 +259,9 @@ const VHostManager = ({ version }: { version: string }) => {
 
       {/* Hosts file preview */}
       <Card>
-        <CardHeader className="py-2"><CardTitle className="text-xs font-medium flex items-center gap-1"><FileText className="h-3 w-3" /> /etc/hosts</CardTitle></CardHeader>
+        <CardHeader className="py-2"><CardTitle className="text-xs font-medium flex items-center gap-1"><FileText className="size-3.5" /> /etc/hosts</CardTitle></CardHeader>
         <CardContent className="p-2">
-          <pre className="text-xs font-mono max-h-32 overflow-auto whitespace-pre-wrap bg-muted p-2 rounded">{hostsContent || t('Common', 'Loading')}</pre>
+          <pre className="text-xs font-mono max-h-32 overflow-auto whitespace-pre-wrap bg-code-bg p-2 rounded-lg">{hostsContent || t('Common', 'Loading')}</pre>
         </CardContent>
       </Card>
 
@@ -271,12 +273,12 @@ const VHostManager = ({ version }: { version: string }) => {
           <div className="space-y-3">
             {configFile?.path && <div className="truncate text-xs text-muted-foreground">{configFile.path}</div>}
             {configMessage && (
-              <pre className={`max-h-28 overflow-auto whitespace-pre-wrap rounded-md p-2 text-xs ${configMessage === t('RuntimeDetail', 'SaveAndReloadedNginx') ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+              <pre className={`max-h-28 overflow-auto whitespace-pre-wrap rounded-lg p-2 text-xs ${configMessage === t('RuntimeDetail', 'SaveAndReloadedNginx') ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
                 {configMessage}
               </pre>
             )}
             <textarea
-              className="h-[48vh] w-full resize-y rounded-md border bg-muted p-3 font-mono text-xs"
+              className="h-[48vh] w-full resize-y rounded-lg border border-border bg-code-bg p-3 font-mono text-xs"
               value={configContent}
               onChange={e => setConfigContent(e.target.value)}
               spellCheck={false}
@@ -286,7 +288,7 @@ const VHostManager = ({ version }: { version: string }) => {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setConfigOpen(false)}>{t('Common', 'Close')}</Button>
               <Button onClick={saveVhostConfig} disabled={configLoading || configSaving || !configVhost}>
-                <Save className="h-3 w-3 mr-1" />{t('Common', 'Save')}
+                <Save className="size-3.5 mr-1" />{t('Common', 'Save')}
               </Button>
             </div>
           </div>
@@ -301,11 +303,11 @@ const VHostManager = ({ version }: { version: string }) => {
 const VersionsTab = () => {
   const { t } = useTranslation();
   const { data: installed, isLoading } = useInstalledVersions('nginx');
-  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   return (
     <div className="space-y-2">
       {installed?.length ? installed.map((v: any) => (
-        <div key={v.version} className="flex items-center justify-between p-3 rounded-md border">
+        <div key={v.version} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
           <span className="font-mono text-sm">{v.version}</span>
           <span className="text-xs text-muted-foreground">{v.size ? `${(v.size / 1_048_576).toFixed(0)} MB` : ''}</span>
         </div>
@@ -325,11 +327,12 @@ export const NginxRuntimeDetail = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <span className="text-2xl">🌐</span>
-        <h1 className="text-2xl font-bold">Nginx</h1>
-        {ver && <Badge variant="outline">{t('Common', 'DefaultValue', { value: ver })}</Badge>}
-      </div>
+      <RuntimeHeader
+        icon={<NginxIcon className="size-5" />}
+        name="Nginx"
+        version={ver}
+        actions={ver ? <Badge variant="outline">{t('Common', 'DefaultValue', { value: ver })}</Badge> : undefined}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>

@@ -1,60 +1,45 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, Plus, Trash2, Globe, RefreshCw, FileText, FolderOpen } from 'lucide-react';
+import { Loader2, Plus, Save, Trash2, Globe, RefreshCw, FileText, FolderOpen, Package } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useDefaultVersion, useInstalledVersions } from '@/hooks/use-runtimes';
 import { useTranslation } from '@/i18n/use-translation';
 import { tauriInvoke } from '@/lib/tauri';
 import type { RuntimeVersion } from '@/types/runtime';
+import { VersionRow } from '@/components/runtime/version-row';
+import { ConfigEditor } from '@/components/runtime/config-editor';
+import { DetailTabs } from '@/components/runtime/detail-tabs';
+import { EmptyState } from '@/components/runtime/empty-state';
 
 interface VirtualHost { id: string; domain: string; root_dir: string; php_version: string; port: number; enabled: boolean; hosts_managed: boolean; }
 interface VHostConfFile { path: string; content: string; }
 
 const NginxConfEditor = ({ version }: { version: string }) => {
   const { t } = useTranslation();
-  const [content, setContent] = useState<string | null>(null);
-  const [original, setOriginal] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
   const [reloading, setReloading] = useState(false);
-  const load = useCallback(async () => {
-    setLoading(true);
-    try { const t = await tauriInvoke<string>('get_nginx_config', { version }); setContent(t); setOriginal(t); }
-    catch (e) { setContent(`# Error: ${String(e)}`); }
-    finally { setLoading(false); }
-  }, [version]);
-  useEffect(() => { load(); }, [load]);
-  const save = async () => {
-    if (!content) return; setSaving(true); setMsg('');
-    try { await tauriInvoke('save_nginx_config', { version, content }); setOriginal(content); setMsg(t('Common.Saved')); setTimeout(() => setMsg(''), 2000); }
-    catch (e) { setMsg(t('Common.ErrorPrefix', { message: String(e) })); }
-    finally { setSaving(false); }
-  };
   const reload = async () => {
     setReloading(true);
-    try { await tauriInvoke('reload_nginx', { version }); setMsg(t('RuntimeDetail.Reloaded')); setTimeout(() => setMsg(''), 2000); }
-    catch (e) { setMsg(t('RuntimeDetail.ReloadFailed', { message: String(e) })); }
+    try { await tauriInvoke('reload_nginx', { version }); }
+    catch (e) { console.error(String(e)); }
     finally { setReloading(false); }
   };
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm">{msg && <span className={msg.startsWith(t('Common.ErrorPrefix', { message: '' })) || msg.startsWith(t('RuntimeDetail.ReloadFailed', { message: '' })) ? 'text-red-500' : 'text-green-500'}>{msg}</span>}{content !== original && !msg && <span className="text-yellow-500">{t('Common.Unsaved')}</span>}</span>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={reload} disabled={reloading}><RefreshCw className="h-3 w-3 mr-1" />{t('Common.Reload')}</Button>
-          <Button size="sm" onClick={save} disabled={saving || content === original}><Save className="h-3 w-3 mr-1" />{t('Common.Save')}</Button>
-        </div>
-      </div>
-      <textarea className="w-full h-72 font-mono text-xs bg-muted p-3 rounded-md border resize-y" value={content || ''} onChange={e => setContent(e.target.value)} spellCheck={false} />
-    </div>
+    <ConfigEditor
+      version={version}
+      loadCommand="get_nginx_config"
+      saveCommand="save_nginx_config"
+      extraActions={
+        <Button variant="outline" size="sm" onClick={reload} disabled={reloading}>
+          <RefreshCw className="size-3.5 mr-1" />
+          {t('Common.Reload')}
+        </Button>
+      }
+    />
   );
 };
 
@@ -144,15 +129,15 @@ const VHostManager = ({ version }: { version: string }) => {
       setConfigSaving(false);
     }
   };
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{t('RuntimeDetail.SiteCount', { count: vhosts.length })}</span>
-        <Button variant="outline" size="sm" onClick={() => setShowForm(!showForm)}><Plus className="h-3 w-3 mr-1" />{t('Common.AddSite')}</Button>
+        <Button variant="outline" size="sm" onClick={() => setShowForm(!showForm)}><Plus className="size-3.5 mr-1" />{t('Common.AddSite')}</Button>
       </div>
       {showForm && (
-        <div className="grid grid-cols-2 gap-2 p-3 border rounded-md">
+        <div className="grid grid-cols-2 gap-2 p-3 rounded-lg border border-border">
           <div><Label className="text-xs">{t('RuntimeDetail.Domain')}</Label><Input placeholder="myapp.test" value={form.domain} onChange={e => setForm({ ...form, domain: e.target.value })} /></div>
           <div><Label className="text-xs">{t('RuntimeDetail.Port')}</Label><Input type="number" value={form.port} onChange={e => setForm({ ...form, port: parseInt(e.target.value) || 80 })} /></div>
           <div className="col-span-2">
@@ -164,35 +149,35 @@ const VHostManager = ({ version }: { version: string }) => {
                 onChange={e => setForm({ ...form, root_dir: e.target.value })}
               />
               <Button type="button" variant="outline" size="sm" onClick={chooseRootDir} title={t('RuntimeDetail.ChooseProjectRoot')}>
-                <FolderOpen className="h-3 w-3 mr-1" />{t('Common.Select')}
+                <FolderOpen className="size-3.5 mr-1" />{t('Common.Select')}
               </Button>
             </div>
           </div>
-          {formError && <pre className="col-span-2 max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-red-500/10 p-2 text-xs text-red-600">{formError}</pre>}
+          {formError && <pre className="col-span-2 max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-danger/10 p-2 text-xs text-danger">{formError}</pre>}
           <div className="col-span-2 flex gap-2">
-            <Button size="sm" onClick={create} disabled={!form.domain || !form.root_dir}><Plus className="h-3 w-3 mr-1" />{t('Common.Create')}</Button>
+            <Button size="sm" onClick={create} disabled={!form.domain || !form.root_dir}><Plus className="size-3.5 mr-1" />{t('Common.Create')}</Button>
             <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>{t('Common.Cancel')}</Button>
           </div>
         </div>
       )}
       <div className="space-y-2">
         {vhosts.map(v => (
-          <div key={v.id} className="p-3 border rounded-md space-y-2">
+          <div key={v.id} className="p-3 rounded-lg border border-border bg-card space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-muted-foreground" />
+                <Globe className="size-4 text-muted-foreground" />
                 <span className="font-mono text-sm">{v.domain}</span>
                 <Badge variant="outline" className="text-xs">:{v.port}</Badge>
               </div>
-              <Button variant="ghost" size="sm" className="h-7" onClick={() => remove(v.id)}><Trash2 className="h-3 w-3 text-red-500" /></Button>
+              <Button variant="ghost" size="sm" className="h-7" onClick={() => remove(v.id)}><Trash2 className="size-3.5 text-danger" /></Button>
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
-              <div>{t('RuntimeDetail.RootDirectory')}: <code>{v.root_dir}</code></div>
+              <div>{t('RuntimeDetail.RootDirectory')}: <code className="ml-1 rounded bg-code-bg px-1.5 py-0.5 font-mono text-xs">{v.root_dir}</code></div>
               <div>PHP: {v.php_version && v.php_version !== version ? v.php_version : t('Common.NotSet')}</div>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openVhostConfig(v)}>
-                <FileText className="h-3 w-3 mr-1" />{t('Common.Config')}
+                <FileText className="size-3.5 mr-1" />{t('Common.Config')}
               </Button>
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => v.hosts_managed ? removeHosts(v.domain) : addHosts(v.domain)}>
                 {v.hosts_managed ? t('Common.HostsRemove') : t('Common.HostsAdd')}
@@ -202,7 +187,7 @@ const VHostManager = ({ version }: { version: string }) => {
         ))}
         {vhosts.length === 0 && <p className="text-sm text-muted-foreground py-4">{t('RuntimeDetail.NoSites')}</p>}
       </div>
-      <Card><CardHeader className="py-2"><CardTitle className="text-xs font-medium flex items-center gap-1"><FileText className="h-3 w-3" /> /etc/hosts</CardTitle></CardHeader><CardContent className="p-2"><pre className="text-xs font-mono max-h-32 overflow-auto whitespace-pre-wrap bg-muted p-2 rounded">{hostsContent || t('Common.Loading')}</pre></CardContent></Card>
+      <Card><CardHeader className="py-2"><CardTitle className="text-xs font-medium flex items-center gap-1"><FileText className="size-3.5" /> /etc/hosts</CardTitle></CardHeader><CardContent className="p-2"><pre className="text-xs font-mono max-h-32 overflow-auto whitespace-pre-wrap bg-code-bg p-2 rounded-lg">{hostsContent || t('Common.Loading')}</pre></CardContent></Card>
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader className="pr-10">
@@ -211,12 +196,12 @@ const VHostManager = ({ version }: { version: string }) => {
           <div className="space-y-3">
             {configFile?.path && <div className="truncate text-xs text-muted-foreground">{configFile.path}</div>}
             {configMessage && (
-              <pre className={`max-h-28 overflow-auto whitespace-pre-wrap rounded-md p-2 text-xs ${configMessage === t('RuntimeDetail.SaveAndReloadedNginx') ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+              <pre className={`max-h-28 overflow-auto whitespace-pre-wrap rounded-lg p-2 text-xs ${configMessage === t('RuntimeDetail.SaveAndReloadedNginx') ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
                 {configMessage}
               </pre>
             )}
             <textarea
-              className="h-[48vh] w-full resize-y rounded-md border bg-muted p-3 font-mono text-xs"
+              className="h-[48vh] w-full resize-y rounded-lg border border-border border-border bg-code-bg p-3 font-mono text-xs"
               value={configContent}
               onChange={e => setConfigContent(e.target.value)}
               spellCheck={false}
@@ -226,7 +211,7 @@ const VHostManager = ({ version }: { version: string }) => {
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setConfigOpen(false)}>{t('Common.Close')}</Button>
               <Button size="sm" onClick={saveVhostConfig} disabled={configLoading || configSaving || !configVhost}>
-                <Save className="h-3 w-3 mr-1" />{t('Common.Save')}
+                <Save className="size-3.5 mr-1" />{t('Common.Save')}
               </Button>
             </div>
           </div>
@@ -239,15 +224,12 @@ const VHostManager = ({ version }: { version: string }) => {
 const VersionsTab = () => {
   const { t } = useTranslation();
   const { data: installed, isLoading } = useInstalledVersions('nginx');
-  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
   return (
     <div className="space-y-2">
       {installed?.length ? installed.map((v: RuntimeVersion) => (
-        <div key={v.version} className="flex items-center justify-between p-3 rounded-md border">
-          <span className="font-mono text-sm">{v.version}</span>
-          <span className="text-xs text-muted-foreground">{v.size ? `${(v.size / 1_048_576).toFixed(0)} MB` : ''}</span>
-        </div>
-      )) : <p className="text-sm text-muted-foreground">{t('RuntimeDetail.NoVersionsInstalled')}</p>}
+        <VersionRow key={v.version} label={v.version} size={v.size} isDefault={false} />
+      )) : <EmptyState icon={<Package className="size-5" />} title={t('RuntimeDetail.NoVersionsInstalled')} />}
     </div>
   );
 };
@@ -255,16 +237,10 @@ const VersionsTab = () => {
 export const NginxDetail = ({ version }: { version: string }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('versions');
-  return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList>
-        <TabsTrigger value="versions">{t('Common.Versions')}</TabsTrigger>
-        <TabsTrigger value="config">nginx.conf</TabsTrigger>
-        <TabsTrigger value="vhosts">{t('RuntimeDetail.Sites')}</TabsTrigger>
-      </TabsList>
-      <TabsContent value="versions" className="mt-4"><Card><CardHeader><CardTitle className="text-base">{t('Common.Versions')}</CardTitle></CardHeader><CardContent><VersionsTab /></CardContent></Card></TabsContent>
-      <TabsContent value="config" className="mt-4"><Card><CardHeader><CardTitle className="text-base">nginx.conf</CardTitle></CardHeader><CardContent><NginxConfEditor key={version} version={version} /></CardContent></Card></TabsContent>
-      <TabsContent value="vhosts" className="mt-4"><Card><CardHeader><CardTitle className="text-base">{t('RuntimeDetail.Sites')}</CardTitle></CardHeader><CardContent><VHostManager key={version} version={version} /></CardContent></Card></TabsContent>
-    </Tabs>
-  );
+  const tabs = [
+    { value: 'versions', label: t('Common.Versions'), title: t('Common.Versions'), content: <VersionsTab /> },
+    { value: 'config', label: 'nginx.conf', title: 'nginx.conf', content: <NginxConfEditor key={version} version={version} /> },
+    { value: 'vhosts', label: t('RuntimeDetail.Sites'), title: t('RuntimeDetail.Sites'), content: <VHostManager key={version} version={version} /> },
+  ];
+  return <DetailTabs tabs={tabs} value={activeTab} onValueChange={setActiveTab} />;
 };
