@@ -3,10 +3,12 @@ import { Sidebar } from '../app-sidebar';
 
 export const SidebarLayout = () => {
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh overflow-hidden bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
-        <Outlet />
+      <main className="relative flex-1 min-w-0 overflow-auto">
+        <div className="mx-auto w-full max-w-360">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

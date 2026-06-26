@@ -38,10 +38,10 @@ const statusText = (operation: OperationInfo, t: ReturnType<typeof useTranslatio
 };
 
 const OperationIcon = ({ operation }: { operation: OperationInfo }) => {
-  if (operation.status === 'completed') return <CheckCircle2 className="h-4 w-4 text-green-600" />;
-  if (operation.status === 'failed') return <XCircle className="h-4 w-4 text-destructive" />;
-  if (operation.status === 'running') return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
-  return <Activity className="h-4 w-4 text-muted-foreground" />;
+  if (operation.status === 'completed') return <CheckCircle2 className="size-4 text-success" />;
+  if (operation.status === 'failed') return <XCircle className="size-4 text-danger" />;
+  if (operation.status === 'running') return <Loader2 className="size-4 animate-spin text-primary" />;
+  return <Activity className="size-4 text-muted-foreground" />;
 };
 
 const OperationRow = ({ operation }: { operation: OperationInfo }) => {
@@ -56,7 +56,7 @@ const OperationRow = ({ operation }: { operation: OperationInfo }) => {
   };
 
   return (
-    <div className="space-y-2 rounded-md border p-3">
+    <div className="space-y-2 rounded-lg border border-border bg-card p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
             <OperationIcon operation={operation} />
@@ -73,7 +73,7 @@ const OperationRow = ({ operation }: { operation: OperationInfo }) => {
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
         <div
-          className={`h-full transition-all ${operation.status === 'failed' ? 'bg-destructive' : 'bg-primary'}`}
+          className={`h-full transition-all ${operation.status === 'failed' ? 'bg-danger' : 'bg-primary'}`}
           style={{ width: `${operation.percent}%` }}
         />
       </div>
@@ -102,14 +102,14 @@ export const OperationCenter = () => {
     <Sheet>
       <SheetTrigger
         render={
-          <button className="w-full rounded-md border bg-background p-3 text-left transition-colors hover:bg-muted" />
+          <button className="w-full rounded-lg border border-sidebar-border bg-card/60 p-3 text-left backdrop-blur-sm transition-colors duration-200 hover:bg-accent hover:text-accent-foreground" />
         }
       >
         <div className="flex items-center gap-2">
           {running.length > 0 ? (
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <Loader2 className="size-4 animate-spin text-primary" />
           ) : (
-            <ListChecks className="h-4 w-4 text-muted-foreground" />
+            <ListChecks className="size-4 text-muted-foreground" />
           )}
           <div className="min-w-0 flex-1">
             <div className="text-xs font-medium">{t('Operations', 'Tasks')}</div>
@@ -129,7 +129,7 @@ export const OperationCenter = () => {
           {ordered.length > 0 ? (
             ordered.map((operation) => <OperationRow key={operation.id} operation={operation} />)
           ) : (
-            <div className="rounded-md border p-4 text-sm text-muted-foreground">
+            <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
               {t('Operations', 'NoTasks')}
             </div>
           )}
