@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAllServices, useStartAllServices, useStopAllServices } from '@/hooks/use-services';
 import { listen } from '@tauri-apps/api/event';
-import { Loader2, Power, PowerOff } from 'lucide-react';
+import { Power, PowerOff } from 'lucide-react';
 import { ServiceCard } from './components/service-card';
 import { useTranslation } from '@/i18n/use-translation';
 
@@ -54,30 +55,53 @@ export const Dashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-40" />
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-6">
+              <div className="flex items-center justify-between pb-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-5 w-16" />
+              </div>
+              <div className="space-y-3 pt-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t('Dashboard', 'Dashboard')}</h1>
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('Dashboard', 'Dashboard')}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t('Dashboard', 'ServicesOverview')}</p>
+        </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleStartAll} disabled={isStartingAll}>
-            <Power className="mr-2 h-4 w-4" />
+          <Button size="sm" onClick={handleStartAll} disabled={isStartingAll}>
+            <Power className="mr-1.5 size-3.5" />
             {t('Dashboard', 'StartAll')}
           </Button>
           <Button variant="outline" size="sm" onClick={handleStopAll} disabled={isStoppingAll}>
-            <PowerOff className="mr-2 h-4 w-4" />
+            <PowerOff className="mr-1.5 size-3.5" />
             {t('Dashboard', 'StopAll')}
           </Button>
         </div>
-      </div>
+      </header>
 
       {startAllError && (
-        <pre className="whitespace-pre-wrap rounded-md border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-600">
+        <pre className="whitespace-pre-wrap rounded-lg border border-danger/20 bg-danger/10 p-3 text-xs text-danger">
           {startAllError}
         </pre>
       )}

@@ -23,12 +23,21 @@ const runtimeName: Record<string, string> = {
 };
 
 const statusColors: Record<ServiceStatus, string> = {
-  running: 'bg-green-500',
-  stopped: 'bg-red-500',
-  error: 'bg-red-500',
-  starting: 'bg-yellow-500',
-  stopping: 'bg-yellow-500',
-  unknown: 'bg-gray-500',
+  running: 'bg-success',
+  stopped: 'bg-muted-foreground/40',
+  error: 'bg-danger',
+  starting: 'bg-warning',
+  stopping: 'bg-warning',
+  unknown: 'bg-muted-foreground/40',
+};
+
+const statusBadgeVariant: Record<ServiceStatus, 'success' | 'warning' | 'destructive' | 'secondary'> = {
+  running: 'success',
+  stopped: 'secondary',
+  error: 'destructive',
+  starting: 'warning',
+  stopping: 'warning',
+  unknown: 'secondary',
 };
 
 const statusLabelKeys = {
@@ -109,34 +118,34 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          <Badge variant={status === 'running' ? 'default' : 'secondary'}>
-            <span className={`mr-2 h-2 w-2 rounded-full ${statusColors[status]}`} />
+          <Badge variant={statusBadgeVariant[status]}>
+            <span className={`mr-2 size-2 rounded-full ${statusColors[status]}`} />
             {t('Dashboard', statusLabelKeys[status])}
           </Badge>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             <div className="text-sm text-muted-foreground">
-              {defaultVersion && <span className="mr-3">v{defaultVersion}</span>}
+              {defaultVersion && <span className="mr-3 font-mono tabular-nums">v{defaultVersion}</span>}
               {service?.pid ? `PID: ${service.pid}` : t('Dashboard', 'NotRunning')}
               {service?.port ? ` • ${t('Dashboard', 'Port')}: ${service.port}` : ''}
             </div>
-            {actionError && <p className="rounded-md bg-red-500/10 p-2 text-xs text-red-600">{actionError}</p>}
+            {actionError && <p className="rounded-lg bg-danger/10 p-2 text-xs text-danger">{actionError}</p>}
             <div className="flex flex-wrap gap-2">
               {status === 'running' ? (
                 <>
                   <Button variant="outline" size="sm" onClick={handleStop} disabled={isStopping}>
-                    <Square className="mr-1 h-3 w-3" />
+                    <Square className="mr-1 size-3.5" />
                     {t('Dashboard', 'Stop')}
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleRestart} disabled={isRestarting}>
-                    <RotateCw className="mr-1 h-3 w-3" />
+                    <RotateCw className="mr-1 size-3.5" />
                     {t('Dashboard', 'Restart')}
                   </Button>
                 </>
               ) : (
                 <Button size="sm" onClick={handleStart} disabled={isStarting || !defaultVersion}>
-                  <Play className="mr-1 h-3 w-3" />
+                  <Play className="mr-1 size-3.5" />
                   {t('Dashboard', 'Start')}
                 </Button>
               )}
@@ -149,7 +158,7 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
                 }}
                 disabled={!defaultVersion}
               >
-                <FileText className="mr-1 h-3 w-3" />
+                <FileText className="mr-1 size-3.5" />
                 {t('Common', 'Logs')}
               </Button>
             </div>
@@ -164,17 +173,17 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
           </DialogHeader>
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={handleClearLog} disabled={isClearingLog || !defaultVersion}>
-              <Trash2 className="mr-1 h-3 w-3" />
+              <Trash2 className="mr-1 size-3.5" />
               {t('Dashboard', 'ClearLogs')}
             </Button>
           </div>
           <div className="max-h-[60vh] space-y-3 overflow-auto pr-1">
             {isLogLoading ? (
-              <div className="rounded-md border bg-muted p-3 text-xs text-muted-foreground">{t('Common', 'Loading')}</div>
+              <div className="rounded-lg border border-border bg-code-bg p-3 text-xs text-muted-foreground">{t('Common', 'Loading')}</div>
             ) : serviceLog?.length ? (
               serviceLog.map((section) => (
-                <section key={section.path} className="overflow-hidden rounded-md border">
-                  <div className="flex items-center justify-between gap-3 border-b bg-muted/60 px-3 py-2">
+                <section key={section.path} className="overflow-hidden rounded-lg border border-border">
+                  <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/60 px-3 py-2">
                     <div className="min-w-0">
                       <div className="truncate text-xs font-medium">{section.name}</div>
                       <div className="truncate text-[11px] text-muted-foreground">{section.path}</div>
@@ -183,13 +192,13 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
                       {section.exists ? t('Dashboard', 'Exists') : t('Dashboard', 'Missing')}
                     </Badge>
                   </div>
-                  <pre className="max-h-56 overflow-auto bg-background p-3 text-xs whitespace-pre-wrap">
+                  <pre className="max-h-56 overflow-auto bg-code-bg p-3 text-xs whitespace-pre-wrap">
                     {section.content || t('Dashboard', 'NoLogs')}
                   </pre>
                 </section>
               ))
             ) : (
-              <div className="rounded-md border bg-muted p-3 text-xs text-muted-foreground">{t('Dashboard', 'NoLogs')}</div>
+              <div className="rounded-lg border border-border bg-code-bg p-3 text-xs text-muted-foreground">{t('Dashboard', 'NoLogs')}</div>
             )}
           </div>
         </DialogContent>
