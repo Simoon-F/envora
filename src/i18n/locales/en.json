@@ -50,7 +50,8 @@
     "Dashboard": "Dashboard",
     "Logout": "Logout",
     "Runtimes": "Runtimes",
-    "Settings": "Settings"
+    "Settings": "Settings",
+    "Menu": "Menu"
   },
   "Dashboard": {
     "Dashboard": "Dashboard",
@@ -71,7 +72,8 @@
     "ClearLogs": "Clear",
     "Exists": "Exists",
     "Missing": "Missing",
-    "NoLogs": "No logs yet"
+    "NoLogs": "No logs yet",
+    "ServicesOverview": "Overview of local services and their status."
   },
   "Operations": {
     "Runtime": "Runtime",

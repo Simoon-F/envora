@@ -23,15 +23,15 @@ export const PathSettings = ({ settings, isLoading }: PathSettingsProps) => {
           <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground">{t('Settings', 'DataDirectory')}</Label>
-              <p className="mt-1 font-mono text-sm">{settings.data_dir}</p>
+              <p className="mt-1 rounded-md bg-code-bg px-2 py-1 font-mono text-xs break-all">{settings.data_dir}</p>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">{t('Settings', 'RuntimeDirectory')}</Label>
-              <p className="mt-1 font-mono text-sm">{settings.runtime_dir}</p>
+              <p className="mt-1 rounded-md bg-code-bg px-2 py-1 font-mono text-xs break-all">{settings.runtime_dir}</p>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">{t('Settings', 'BinDirectory')}</Label>
-              <p className="mt-1 font-mono text-sm">{settings.bin_dir}</p>
+              <p className="mt-1 rounded-md bg-code-bg px-2 py-1 font-mono text-xs break-all">{settings.bin_dir}</p>
             </div>
           </div>
         ) : null}

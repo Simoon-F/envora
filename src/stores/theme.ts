@@ -21,8 +21,8 @@ function applyTheme(theme: Theme) {
 }
 
 export const useThemeStore = create<ThemeStore>((set) => ({
-  theme: 'system',
-  resolved: applyTheme('system'),
+  theme: 'light',
+  resolved: applyTheme('light'),
   setTheme: (theme) => {
     const resolved = applyTheme(theme);
     set({ theme, resolved });

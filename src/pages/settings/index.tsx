@@ -8,6 +8,7 @@ import { LanguageSettings } from './components/language-settings';
 import { PathSettings } from './components/path-settings';
 import { ShellEnvironmentSettings } from './components/shell-environment-settings';
 import { useTranslation } from '@/i18n/use-translation';
+import { PageContainer } from '@/components/layout/page-container';
 
 export const Settings = () => {
   const { theme, setTheme } = useThemeStore();
@@ -30,8 +31,7 @@ export const Settings = () => {
   };
 
   return (
-    <div className="max-w-2xl space-y-6 p-6">
-      <h1 className="text-2xl font-bold">{t('Settings', 'Settings')}</h1>
+    <PageContainer title={t('Settings', 'Settings')} maxWidth="narrow">
       <AppearanceSettings theme={theme} onThemeChange={handleThemeChange} />
       <LanguageSettings />
       <PathSettings settings={settings} isLoading={isLoading} />
@@ -42,6 +42,6 @@ export const Settings = () => {
         onInstall={handleInstallShellEnv}
       />
       <AboutSettings />
-    </div>
+    </PageContainer>
   );
 };

@@ -1,10 +1,9 @@
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/i18n/use-translation';
 import { cn } from '@/lib/utils';
 import type { Theme } from '@/types/settings';
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { Check, Monitor, Moon, Sun } from 'lucide-react';
 
 const themeOptions = [
   { value: 'light', labelKey: 'Light', icon: Sun },
@@ -28,19 +27,43 @@ export const AppearanceSettings = ({ theme, onThemeChange }: AppearanceSettingsP
       <CardContent>
         <div className="space-y-3">
           <Label>{t('Settings', 'Theme')}</Label>
-          <div className="flex gap-2">
-            {themeOptions.map(({ value, labelKey, icon: Icon }) => (
-              <Button
-                key={value}
-                variant={theme === value ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => onThemeChange(value)}
-                className={cn('flex-1', theme === value && 'ring-2 ring-primary')}
-              >
-                <Icon className="mr-2 h-4 w-4" />
-                {t('Settings', labelKey)}
-              </Button>
-            ))}
+          <div className="grid grid-cols-3 gap-2">
+            {themeOptions.map(({ value, labelKey, icon: Icon }) => {
+              const active = theme === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => onThemeChange(value)}
+                  className={cn(
+                    'group relative flex flex-col items-center gap-2 rounded-lg border px-3 py-3 transition-colors duration-200',
+                    active
+                      ? 'border-primary/40 bg-primary/5'
+                      : 'border-border bg-card hover:bg-accent/40',
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      'size-5 transition-colors',
+                      active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground',
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'text-xs',
+                      active ? 'font-medium text-foreground' : 'text-muted-foreground',
+                    )}
+                  >
+                    {t('Settings', labelKey)}
+                  </span>
+                  {active && (
+                    <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="size-2.5" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </CardContent>

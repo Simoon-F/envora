@@ -25,14 +25,14 @@ export const ShellEnvironmentSettings = ({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Terminal className="h-4 w-4" />
+          <Terminal className="size-4" />
           {t('Settings', 'ShellEnvironment')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Badge variant={shellEnv?.is_installed ? 'default' : 'secondary'}>
+            <Badge variant={shellEnv?.is_installed ? 'success' : 'secondary'}>
               {shellEnv?.is_installed ? t('Settings', 'Installed') : t('Settings', 'NotInstalled')}
             </Badge>
             <span className="text-xs text-muted-foreground">{t('Settings', 'TakesEffectInNewTerminal')}</span>
@@ -48,22 +48,22 @@ export const ShellEnvironmentSettings = ({
 
           <div>
             <Label className="text-xs text-muted-foreground">{t('Settings', 'CommandDirectory')}</Label>
-            <p className="mt-1 break-all font-mono text-sm">{shellEnv?.bin_dir ?? binDir ?? '-'}</p>
+            <p className="mt-1 break-all rounded-md bg-code-bg px-2 py-1 font-mono text-xs">{shellEnv?.bin_dir ?? binDir ?? '-'}</p>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">{t('Settings', 'EnvironmentScript')}</Label>
-            <p className="mt-1 break-all font-mono text-sm">{shellEnv?.env_script ?? '-'}</p>
+            <p className="mt-1 break-all rounded-md bg-code-bg px-2 py-1 font-mono text-xs">{shellEnv?.env_script ?? '-'}</p>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">{t('Settings', 'ShellProfile')}</Label>
-            <p className="mt-1 break-all font-mono text-sm">{shellEnv?.shell_profile ?? '-'}</p>
+            <p className="mt-1 break-all rounded-md bg-code-bg px-2 py-1 font-mono text-xs">{shellEnv?.shell_profile ?? '-'}</p>
           </div>
 
           <Button size="sm" onClick={onInstall} disabled={isInstalling}>
             {isInstalling ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 size-4 animate-spin" />
             ) : (
-              <CheckCircle2 className="mr-2 h-4 w-4" />
+              <CheckCircle2 className="mr-2 size-4" />
             )}
             {shellEnv?.is_installed
               ? t('Settings', 'ReinstallShellEnvironment')
