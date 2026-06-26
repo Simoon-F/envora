@@ -1,16 +1,56 @@
-# Envora
+<p align="center">
+  <img src="public/logo.png" width="120" alt="Envora logo" />
+</p>
 
-[简体中文](README.zh-CN.md) | English
+<h1 align="center">Envora</h1>
 
-Envora is a desktop development environment manager for local runtimes,
-services, configuration files, and language toolchains.
+<p align="center">
+  A desktop development environment manager for local runtimes, services,
+  configuration files, and language toolchains.
+</p>
 
-It gives developers one place to install runtime versions, switch defaults,
+<p align="center">
+  <a href="README.zh-CN.md">简体中文</a> | English
+</p>
+
+<p align="center">
+  <img alt="version" src="https://img.shields.io/badge/version-0.1.11-blue" />
+  <img alt="status" src="https://img.shields.io/badge/status-pre--1.0-orange" />
+  <img alt="platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" />
+  <img alt="license" src="https://img.shields.io/badge/license-pending-yellow" />
+</p>
+
+Envora gives developers one place to install runtime versions, switch defaults,
 manage service processes, edit common configuration files, and keep project
 tooling visible without replacing the command-line workflows they already use.
 
 > Envora is under active development. The project is being shaped in the open
 > toward a stable local development environment platform.
+
+## Table of Contents
+
+- [Product Positioning](#product-positioning)
+- [Core Capabilities](#core-capabilities)
+- [Supported Runtimes And Tools](#supported-runtimes-and-tools)
+- [Current Status](#current-status)
+- [Architecture](#architecture)
+- [Technology Stack](#technology-stack)
+- [Requirements](#requirements)
+- [Development](#development)
+- [Development Principles](#development-principles)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgements](#acknowledgements)
+
+## At A Glance
+
+| Area | What you get |
+| --- | --- |
+| Runtime Management | Install and switch versions of runtimes — currently PHP, Nginx, MySQL, Java, Node.js, and Go, with more on the way. |
+| Service Operations | Start, stop, restart, and inspect local services with status, ports, and logs. |
+| Configuration & Sites | Edit `php.ini`, `nginx.conf`, virtual hosts, and `my.cnf`; manage hosts entries and MySQL. |
+| Toolchain Utilities | Composer, npm/Corepack, and Go environment tooling in one place. |
 
 ## Product Positioning
 
@@ -33,8 +73,9 @@ and runtime directories inspectable.
 
 ### Runtime Management
 
-- Install and manage multiple versions of PHP, Nginx, MySQL, Java, Node.js, and
-  Go.
+- Install and manage multiple versions of runtimes through a pluggable provider
+  system — currently PHP, Nginx, MySQL, Java, Node.js, and Go, with more
+  runtimes being added over time.
 - Set default runtime versions and expose runtime commands through Envora's
   managed `bin` directory.
 - Track install progress and long-running operations across navigation.
@@ -134,18 +175,19 @@ Envora is split into a React frontend and a Rust/Tauri backend.
 - [Tauri 2](https://tauri.app/) for the desktop shell and native integration
 - [Rust](https://www.rust-lang.org/) for runtime, service, download, and
   filesystem operations
-- [React](https://react.dev/) and [TypeScript](https://www.typescriptlang.org/)
-  for the user interface
-- [Vite](https://vite.dev/) for frontend development and builds
-- [Tailwind CSS](https://tailwindcss.com/) with shadcn-style UI primitives
+- [React 19](https://react.dev/) and [TypeScript](https://www.typescriptlang.org/)
+  for the user interface, with [React Router](https://reactrouter.com/) v7
+- [Vite 7](https://vite.dev/) for frontend development and builds
+- [Tailwind CSS v4](https://tailwindcss.com/) with [shadcn](https://ui.shadcn.com/)
+  and [Base UI](https://base-ui.com/) primitives, icons by [Lucide](https://lucide.dev/)
 - [SWR](https://swr.vercel.app/) and [Zustand](https://zustand.docs.pmnd.rs/)
   for client-side data flow and state
 
 ## Requirements
 
-- Node.js
-- pnpm 10+
-- Rust toolchain
+- Node.js 20+
+- pnpm 10.30+ (the repo pins `pnpm@10.30.2` via `packageManager`)
+- Rust toolchain (stable)
 - Tauri system dependencies for your operating system
 
 On macOS, runtime builds may also require Xcode Command Line Tools:
@@ -205,13 +247,26 @@ pnpm tauri build
 
 ## Roadmap
 
-- Improve cross-platform parity for runtime installation and service control.
-- Complete release packaging and update flows.
-- Expand diagnostics for failed downloads, builds, and service starts.
-- Add Rust toolchain management.
-- Improve first-run onboarding and environment health checks.
-- Add automated tests around runtime providers and service lifecycle behavior.
-- Publish stable installation packages.
+**Done**
+
+- Runtime management via a pluggable provider system (PHP, Nginx, MySQL, Java, Node.js, Go so far).
+- Service lifecycle (start, stop, restart, logs) from the dashboard.
+- Configuration editing for `php.ini`, `nginx.conf`, virtual hosts, and `my.cnf`.
+- Composer toolchain management with system Composer detection.
+- Bilingual UI (English / Simplified Chinese), light/dark/system themes.
+
+**In Progress**
+
+- Cross-platform parity for runtime installation and service control.
+- Release packaging and update flows.
+- Diagnostics for failed downloads, builds, and service starts.
+
+**Planned**
+
+- Rust toolchain management.
+- First-run onboarding and environment health checks.
+- Automated tests around runtime providers and service lifecycle behavior.
+- Stable installation packages.
 
 ## Contributing
 
@@ -228,10 +283,11 @@ can be aligned before implementation.
 
 ## License
 
-The project license has not been finalized.
+The project license has not been finalized yet.
 
-Please wait for a license file before using Envora in another project, or open
-an issue to discuss your intended use.
+Until a license file is added, Envora is shared for evaluation and feedback
+only. If you want to use or build on Envora in another project, please open an
+issue to discuss your intended use — you're welcome to.
 
 ## Acknowledgements
 
