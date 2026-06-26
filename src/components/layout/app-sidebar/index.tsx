@@ -20,15 +20,15 @@ export const Sidebar = () => {
     <aside className="flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       {/* Brand */}
       <div className="flex h-14 items-center gap-2.5 px-4">
-        <BrandMark className="h-5 w-5 text-primary" />
-        <span className="text-base font-semibold tracking-tight text-sidebar-foreground">
+        <BrandMark className="h-5 w-5" />
+        <span className="text-[17px] font-semibold tracking-tight text-sidebar-foreground">
           Envora
         </span>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 space-y-0.5 px-3 py-2">
-        <h2 className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+        <h2 className="px-3 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
           {t('Layout', 'Menu')}
         </h2>
         {navItems.map(({ to, icon: Icon, labelKey }) => (
@@ -37,7 +37,7 @@ export const Sidebar = () => {
             to={to}
             className={({ isActive }) =>
               cn(
-                'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-200',
+                'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors duration-200',
                 isActive
                   ? 'bg-primary/10 font-medium text-foreground'
                   : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
