@@ -1088,7 +1088,7 @@ dependencies = [
 
 [[package]]
 name = "envora"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "async-trait",
  "chrono",
