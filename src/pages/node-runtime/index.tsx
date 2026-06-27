@@ -12,7 +12,7 @@ export const NodeRuntime = () => {
   const currentVersion = defaultVersion || installed?.[0]?.version || '';
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-5 p-5">
       <RuntimeHeader
         icon={<NodeIcon className="size-9" />}
         name="Node.js"

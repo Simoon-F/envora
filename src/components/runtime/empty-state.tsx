@@ -13,12 +13,12 @@ export const EmptyState = ({ icon, title, description, action, className }: Empt
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 py-10 text-center',
+        'flex flex-col items-center justify-center rounded-xl bg-muted/40 py-8 text-center',
         className,
       )}
     >
       {icon && (
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
           {icon}
         </div>
       )}
@@ -26,7 +26,7 @@ export const EmptyState = ({ icon, title, description, action, className }: Empt
       {description && (
         <p className="mt-1 max-w-xs text-xs text-muted-foreground">{description}</p>
       )}
-      {action && <div className="mt-4">{action}</div>}
+      {action && <div className="mt-3">{action}</div>}
     </div>
   );
 };

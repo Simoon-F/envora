@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export interface DetailTab {
@@ -23,7 +22,7 @@ interface DetailTabsProps {
 export const DetailTabs = ({ tabs, value, onValueChange }: DetailTabsProps) => {
   return (
     <Tabs value={value} onValueChange={onValueChange}>
-      <TabsList>
+      <TabsList className="mb-4">
         {tabs.map((tab) => (
           <TabsTrigger key={tab.value} value={tab.value} disabled={tab.disabled}>
             {tab.label}
@@ -31,13 +30,8 @@ export const DetailTabs = ({ tabs, value, onValueChange }: DetailTabsProps) => {
         ))}
       </TabsList>
       {tabs.map((tab) => (
-        <TabsContent key={tab.value} value={tab.value} className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{tab.title}</CardTitle>
-            </CardHeader>
-            <CardContent>{tab.content}</CardContent>
-          </Card>
+        <TabsContent key={tab.value} value={tab.value} className="mt-0 space-y-4">
+          {tab.content}
         </TabsContent>
       ))}
     </Tabs>

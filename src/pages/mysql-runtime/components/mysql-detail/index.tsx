@@ -45,7 +45,7 @@ const UserManager = ({ version }: { version: string }) => {
         <Button variant="outline" size="sm" onClick={() => setShowForm(!showForm)}><Plus className="size-3.5 mr-1" />{t('Common.Add')}</Button>
       </div>
       {showForm && (
-        <div className="grid grid-cols-3 gap-2 p-3 rounded-lg border border-border bg-card">
+        <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/60 p-3">
           <div><Label className="text-xs">{t('RuntimeDetail.Username')}</Label><Input value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} /></div>
           <div><Label className="text-xs">{t('RuntimeDetail.Password')}</Label><Input type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} /></div>
           <div><Label className="text-xs">{t('RuntimeDetail.Host')}</Label><Input value={newUser.host} onChange={e => setNewUser({ ...newUser, host: e.target.value })} /></div>
@@ -57,7 +57,7 @@ const UserManager = ({ version }: { version: string }) => {
       )}
       <div className="space-y-1">
         {users.map(u => (
-          <div key={`${u.user}@${u.host}`} className="flex items-center justify-between p-2 rounded-lg border border-border bg-card">
+          <div key={`${u.user}@${u.host}`} className="flex items-center justify-between rounded-lg bg-card p-2 shadow-sm">
             <div><span className="font-mono text-sm">{u.user}</span><span className="text-xs text-muted-foreground ml-2">@{u.host}</span></div>
             <div className="flex items-center gap-2">
               {changingPw === `${u.user}@${u.host}` ? (
@@ -104,7 +104,7 @@ const DatabaseManager = ({ version }: { version: string }) => {
       <div className="flex gap-2"><Input className="flex-1" placeholder={t('RuntimeDetail.DatabaseName')} value={newDb} onChange={e => setNewDb(e.target.value)} /><Button size="sm" onClick={create} disabled={!newDb}><Plus className="size-3.5 mr-1" />{t('Common.Create')}</Button></div>
       <div className="grid grid-cols-3 gap-1">
         {dbs.map(db => (
-          <div key={db.name} className="flex items-center justify-between p-2 rounded-lg border border-border bg-card text-sm">
+          <div key={db.name} className="flex items-center justify-between rounded-lg bg-card p-2 text-sm shadow-sm">
             <span className="font-mono">{db.name}</span>
             {!['information_schema', 'mysql', 'performance_schema', 'sys'].includes(db.name) && (
               <Button variant="ghost" size="sm" className="h-6" onClick={() => drop(db.name)}><Trash2 className="size-3.5 text-danger" /></Button>

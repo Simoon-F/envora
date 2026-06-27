@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/i18n/use-translation';
 import { cn } from '@/lib/utils';
@@ -20,11 +20,8 @@ export const AppearanceSettings = ({ theme, onThemeChange }: AppearanceSettingsP
   const { t } = useTranslation();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{t('Settings', 'Appearance')}</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Card size="sm" className="card-subtle mt-4">
+      <CardContent className="p-5">
         <div className="space-y-3">
           <Label>{t('Settings', 'Theme')}</Label>
           <div className="grid grid-cols-3 gap-2">

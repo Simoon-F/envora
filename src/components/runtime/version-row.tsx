@@ -37,16 +37,16 @@ export const VersionRow = ({
   return (
     <div
       className={cn(
-        'group flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5 transition-colors hover:border-primary/30',
-        isDefault && 'border-primary/40 bg-primary/5',
+        'group flex items-center justify-between gap-3 rounded-lg bg-card p-2.5 transition-colors hover:bg-muted/60',
+        isDefault && 'bg-primary/5',
         className,
       )}
     >
       <div className="flex min-w-0 items-center gap-2">
         <span className="truncate font-mono text-sm">{label}</span>
         {isDefault && (
-          <Badge variant="success" className="shrink-0">
-            <Check className="size-3" />
+          <Badge variant="success" className="shrink-0 gap-1 px-1.5 py-0 text-[11px]">
+            <Check className="size-2.5" />
             {t('Common', 'Default')}
           </Badge>
         )}
@@ -56,18 +56,18 @@ export const VersionRow = ({
           <span className="text-xs tabular-nums text-muted-foreground">{formatSize(size)}</span>
         )}
         {onSetDefault && !isDefault && (
-          <Button variant="ghost" size="sm" onClick={onSetDefault}>
+          <Button variant="ghost" size="xs" onClick={onSetDefault}>
             {t('Common', 'SetDefault')}
           </Button>
         )}
         {onUninstall && (
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon-xs"
             title={t('Common', 'Installed')}
             onClick={onUninstall}
           >
-            <Trash2 className="size-3.5 text-muted-foreground" />
+            <Trash2 className="size-3 text-muted-foreground/60 group-hover:text-danger" />
           </Button>
         )}
       </div>

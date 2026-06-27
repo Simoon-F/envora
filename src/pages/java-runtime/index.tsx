@@ -12,7 +12,7 @@ export const JavaRuntime = () => {
   const currentVersion = defaultVersion || installed?.[0]?.version || '';
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-5 p-5">
       <RuntimeHeader
         icon={<JavaIcon className="size-9" />}
         name="Java"

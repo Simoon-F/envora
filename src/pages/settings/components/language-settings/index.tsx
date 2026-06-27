@@ -1,5 +1,5 @@
 import { Check, Languages } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/i18n/use-translation';
 import { cn } from '@/lib/utils';
@@ -11,14 +11,12 @@ export const LanguageSettings = () => {
   const { language, languageNames, setLanguage, t } = useTranslation();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Languages className="size-4" />
-          {t('Settings', 'Language')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Card size="sm" className="card-subtle mt-4">
+      <CardContent className="p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Languages className="size-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium">{t('Settings', 'Language')}</h3>
+        </div>
         <div className="space-y-3">
           <Label>{t('Settings', 'LanguageDescription')}</Label>
           <div className="grid grid-cols-2 gap-2">

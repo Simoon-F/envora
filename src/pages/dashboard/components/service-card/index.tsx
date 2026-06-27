@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -115,53 +115,56 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          <Badge variant={statusBadgeVariant[status]}>
-            <span className={`mr-2 size-2 rounded-full ${statusColors[status]}`} />
-            {t('Dashboard', statusLabelKeys[status])}
-          </Badge>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">
-              {defaultVersion && <span className="mr-3 font-mono tabular-nums">v{defaultVersion}</span>}
-              {service?.pid ? `PID: ${service.pid}` : t('Dashboard', 'NotRunning')}
-              {service?.port ? ` • ${t('Dashboard', 'Port')}: ${service.port}` : ''}
-            </div>
-            {actionError && <p className="rounded-lg bg-danger/10 p-2 text-xs text-danger">{actionError}</p>}
-            <div className="flex flex-wrap gap-2">
-              {status === 'running' ? (
-                <>
-                  <Button variant="outline" size="sm" onClick={handleStop} disabled={isStopping}>
-                    <Square className="mr-1 size-3.5" />
-                    {t('Dashboard', 'Stop')}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleRestart} disabled={isRestarting}>
-                    <RotateCw className="mr-1 size-3.5" />
-                    {t('Dashboard', 'Restart')}
-                  </Button>
-                </>
-              ) : (
-                <Button size="sm" onClick={handleStart} disabled={isStarting || !defaultVersion}>
-                  <Play className="mr-1 size-3.5" />
-                  {t('Dashboard', 'Start')}
+      <Card size="sm" className="card-subtle">
+        <CardContent className="space-y-3 p-4">
+          {/* Header: title + status dot */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">{title}</h3>
+            <Badge variant={statusBadgeVariant[status]} className="gap-1.5 px-2 py-0">
+              <span className={`status-dot ${statusColors[status]}`} />
+              {t('Dashboard', statusLabelKeys[status])}
+            </Badge>
+          </div>
+
+          {/* Info row */}
+          <div className="text-xs text-muted-foreground">
+            {defaultVersion && <span className="mr-3 font-mono tabular-nums">v{defaultVersion}</span>}
+            {service?.pid ? `PID: ${service.pid}` : t('Dashboard', 'NotRunning')}
+            {service?.port ? ` · ${t('Dashboard', 'Port')}: ${service.port}` : ''}
+          </div>
+
+          {/* Action row */}
+          {actionError && <p className="rounded-lg bg-danger/10 p-2 text-xs text-danger">{actionError}</p>}
+          <div className="flex flex-wrap gap-1.5">
+            {status === 'running' ? (
+              <>
+                <Button variant="outline" size="xs" onClick={handleStop} disabled={isStopping}>
+                  <Square className="mr-1 size-3" />
+                  {t('Dashboard', 'Stop')}
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setLogOpen(true);
-                  refreshLog();
-                }}
-                disabled={!defaultVersion}
-              >
-                <FileText className="mr-1 size-3.5" />
-                {t('Common', 'Logs')}
+                <Button variant="outline" size="xs" onClick={handleRestart} disabled={isRestarting}>
+                  <RotateCw className="mr-1 size-3" />
+                  {t('Dashboard', 'Restart')}
+                </Button>
+              </>
+            ) : (
+              <Button size="xs" onClick={handleStart} disabled={isStarting || !defaultVersion}>
+                <Play className="mr-1 size-3" />
+                {t('Dashboard', 'Start')}
               </Button>
-            </div>
+            )}
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={() => {
+                setLogOpen(true);
+                refreshLog();
+              }}
+              disabled={!defaultVersion}
+            >
+              <FileText className="mr-1 size-3" />
+              {t('Common', 'Logs')}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -172,18 +175,18 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
             <DialogTitle>{t('Dashboard', 'ServiceLogs', { service: title })}</DialogTitle>
           </DialogHeader>
           <div className="flex justify-end">
-            <Button variant="outline" size="sm" onClick={handleClearLog} disabled={isClearingLog || !defaultVersion}>
-              <Trash2 className="mr-1 size-3.5" />
+            <Button variant="outline" size="xs" onClick={handleClearLog} disabled={isClearingLog || !defaultVersion}>
+              <Trash2 className="mr-1 size-3" />
               {t('Dashboard', 'ClearLogs')}
             </Button>
           </div>
           <div className="max-h-[60vh] space-y-3 overflow-auto pr-1">
             {isLogLoading ? (
-              <div className="rounded-lg border border-border bg-code-bg p-3 text-xs text-muted-foreground">{t('Common', 'Loading')}</div>
+              <div className="rounded-lg bg-code-bg p-3 text-xs text-muted-foreground">{t('Common', 'Loading')}</div>
             ) : serviceLog?.length ? (
               serviceLog.map((section) => (
                 <section key={section.path} className="overflow-hidden rounded-lg border border-border">
-                  <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/60 px-3 py-2">
+                  <div className="flex items-center justify-between gap-3 bg-muted/60 px-3 py-1.5">
                     <div className="min-w-0">
                       <div className="truncate text-xs font-medium">{section.name}</div>
                       <div className="truncate text-[11px] text-muted-foreground">{section.path}</div>
@@ -198,7 +201,7 @@ export const ServiceCard = ({ serviceType, title }: ServiceCardProps) => {
                 </section>
               ))
             ) : (
-              <div className="rounded-lg border border-border bg-code-bg p-3 text-xs text-muted-foreground">{t('Dashboard', 'NoLogs')}</div>
+              <div className="rounded-lg bg-code-bg p-3 text-xs text-muted-foreground">{t('Dashboard', 'NoLogs')}</div>
             )}
           </div>
         </DialogContent>

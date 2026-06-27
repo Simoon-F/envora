@@ -229,7 +229,7 @@ export const MysqlRuntimeDetail = () => {
   const ver = defaultVersion || installed?.[0]?.version || '';
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-5 space-y-3">
       <RuntimeHeader
         icon={<MysqlIcon className="size-9" />}
         name="MySQL"

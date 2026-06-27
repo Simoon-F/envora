@@ -10,15 +10,15 @@ import { GoDetail } from '@/pages/go-runtime/components/go-detail';
 import { useTranslation } from '@/i18n/use-translation';
 import { RuntimeIcon } from '@/components/runtime/runtime-icons';
 import { RuntimeHeader } from '@/components/runtime/runtime-header';
-import { RuntimeItem, type RuntimeItemInfo } from './components/runtime-item';
+import { cn } from '@/lib/utils';
 
-const runtimes: RuntimeItemInfo[] = [
-  { type: 'php', name: 'PHP', icon: <RuntimeIcon type="php" className="size-7" /> },
-  { type: 'nginx', name: 'Nginx', icon: <RuntimeIcon type="nginx" className="size-7" /> },
-  { type: 'mysql', name: 'MySQL', icon: <RuntimeIcon type="mysql" className="size-7" /> },
-  { type: 'java', name: 'Java', icon: <RuntimeIcon type="java" className="size-7" /> },
-  { type: 'node', name: 'Node.js', icon: <RuntimeIcon type="node" className="size-7" /> },
-  { type: 'go', name: 'Go', icon: <RuntimeIcon type="go" className="size-7" /> },
+const runtimes: { type: RuntimeType; name: string; icon: React.ReactNode }[] = [
+  { type: 'php', name: 'PHP', icon: <RuntimeIcon type="php" className="size-6" /> },
+  { type: 'nginx', name: 'Nginx', icon: <RuntimeIcon type="nginx" className="size-6" /> },
+  { type: 'mysql', name: 'MySQL', icon: <RuntimeIcon type="mysql" className="size-6" /> },
+  { type: 'java', name: 'Java', icon: <RuntimeIcon type="java" className="size-6" /> },
+  { type: 'node', name: 'Node.js', icon: <RuntimeIcon type="node" className="size-6" /> },
+  { type: 'go', name: 'Go', icon: <RuntimeIcon type="go" className="size-6" /> },
 ];
 
 export const Runtimes = () => {
@@ -86,33 +86,68 @@ export const Runtimes = () => {
   };
 
   return (
-    <div className="flex h-full">
+    <div className="runtime-detail-layout">
       {/* Runtime selector */}
-      <aside className="w-60 shrink-0 border-r border-border bg-muted/20 p-3">
-        <h2 className="px-3 pb-2 pt-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-          {t('Runtimes', 'Runtimes')}
-        </h2>
-        <div className="space-y-1">
-          {runtimes.map((runtime) => (
-            <RuntimeItem
-              key={runtime.type}
-              runtime={runtime}
-              selected={selected === runtime.type}
-              onSelect={() => setSelected(runtime.type)}
-            />
-          ))}
+      <aside className="runtime-selector">
+        <h2 className="runtime-selector-title">{t('Runtimes', 'Runtimes')}</h2>
+        <div className="runtime-selector-inner">
+          <div className="space-y-0.5">
+            {runtimes.map((runtime) => {
+              const installed =
+                runtime.type === 'php'
+                  ? installedPhp
+                  : runtime.type === 'nginx'
+                    ? installedNginx
+                    : runtime.type === 'mysql'
+                      ? installedMysql
+                      : runtime.type === 'java'
+                        ? installedJava
+                        : runtime.type === 'node'
+                          ? installedNode
+                          : installedGo;
+              const count = installed?.length ?? 0;
+              return (
+                <button
+                  key={runtime.type}
+                  type="button"
+                  onClick={() => setSelected(runtime.type)}
+                  className={cn(
+                    'runtime-list-item',
+                    selected === runtime.type ? 'runtime-list-item-active' : '',
+                  )}
+                >
+                  <span className={cn('shrink-0 transition-colors', selected === runtime.type ? 'text-primary' : 'text-muted-foreground')}>
+                    {runtime.icon}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className={cn('text-sm transition-colors', selected === runtime.type ? 'font-medium text-foreground' : 'text-foreground')}>
+                      {runtime.name}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {t('Runtimes', 'InstalledVersionsCount', { count })}
+                    </div>
+                  </div>
+                  {count > 0 && (
+                    <span className={cn('size-1.5 rounded-full shrink-0', selected === runtime.type ? 'bg-primary' : 'bg-muted-foreground/30')} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </aside>
 
       {/* Detail panel */}
-      <div className="flex-1 overflow-auto p-6">
-        <RuntimeHeader
-          icon={runtimeInfo.icon}
-          name={runtimeInfo.name}
-          version={version}
-          className="mb-6"
-        />
-        <div className="p-1">{renderDetail()}</div>
+      <div className="runtime-content">
+        <div className="runtime-content-inner">
+          <RuntimeHeader
+            icon={runtimeInfo.icon}
+            name={runtimeInfo.name}
+            version={version}
+            className="mb-6"
+          />
+          <div className="p-1">{renderDetail()}</div>
+        </div>
       </div>
     </div>
   );

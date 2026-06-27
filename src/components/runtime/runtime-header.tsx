@@ -20,20 +20,19 @@ export const RuntimeHeader = ({
   className,
 }: RuntimeHeaderProps) => {
   return (
-    <div className={cn('flex items-center justify-between gap-3', className)}>
+    <div className={cn('flex items-center justify-between gap-4', className)}>
       <div className="flex items-center gap-3">
         <span
           className={cn(
-            'flex h-12 w-12 items-center justify-center text-foreground',
-            'shrink-0',
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground',
           )}
         >
           {icon}
         </span>
         <div className="flex items-baseline gap-2">
-          <h1 className="text-xl font-semibold tracking-tight">{name}</h1>
+          <h1 className="text-lg font-semibold tracking-tight">{name}</h1>
           {version && (
-            <Badge variant="outline" className="font-mono">
+            <Badge variant="outline" className="font-mono text-[11px]">
               {versionLabel ? `${versionLabel} ` : ''}v{version}
             </Badge>
           )}

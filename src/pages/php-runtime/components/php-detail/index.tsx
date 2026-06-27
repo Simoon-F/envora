@@ -172,7 +172,7 @@ const ExtensionManager = ({ version }: { version: string }) => {
         <h4 className="mb-2 text-sm font-medium">{t('RuntimeDetail', 'LoadableExtensions')} ({loadable.length})</h4>
         <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
           {loadable.map(ext => (
-            <div key={ext.filename} className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
+            <div key={ext.filename} className="flex items-center justify-between rounded-lg bg-card px-3 py-2 text-sm shadow-sm">
               <div className="flex items-center gap-2">
                 <Switch checked={ext.enabled} onCheckedChange={() => handleToggle(ext)} disabled={toggling === ext.filename} />
                 <span>{ext.name}</span>
@@ -239,7 +239,7 @@ const PeclInstaller = ({ version }: { version: string }) => {
 const PeclCard = ({ ext, installing, onInstall }: { ext: PeclInfo; installing: string | null; onInstall: (name: string) => void }) => {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
+    <div className="flex items-center justify-between gap-3 rounded-lg bg-card p-3 shadow-sm">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-mono text-sm">{ext.name}</span>

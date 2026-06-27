@@ -97,7 +97,7 @@ export const ConfigEditor = ({
         </div>
       </div>
       <textarea
-        className="h-80 w-full resize-y rounded-lg border border-border bg-code-bg p-3 font-mono text-xs leading-relaxed text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+        className="h-80 w-full resize-y rounded-lg border-0 bg-code-bg p-3 font-mono text-xs leading-relaxed text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/30"
         value={content ?? ''}
         onChange={(e) => setContent(e.target.value)}
         spellCheck={false}

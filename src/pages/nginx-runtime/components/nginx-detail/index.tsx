@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -137,7 +136,7 @@ const VHostManager = ({ version }: { version: string }) => {
         <Button variant="outline" size="sm" onClick={() => setShowForm(!showForm)}><Plus className="size-3.5 mr-1" />{t('Common.AddSite')}</Button>
       </div>
       {showForm && (
-        <div className="grid grid-cols-2 gap-2 p-3 rounded-lg border border-border">
+        <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/60 p-3">
           <div><Label className="text-xs">{t('RuntimeDetail.Domain')}</Label><Input placeholder="myapp.test" value={form.domain} onChange={e => setForm({ ...form, domain: e.target.value })} /></div>
           <div><Label className="text-xs">{t('RuntimeDetail.Port')}</Label><Input type="number" value={form.port} onChange={e => setForm({ ...form, port: parseInt(e.target.value) || 80 })} /></div>
           <div className="col-span-2">
@@ -162,7 +161,7 @@ const VHostManager = ({ version }: { version: string }) => {
       )}
       <div className="space-y-2">
         {vhosts.map(v => (
-          <div key={v.id} className="p-3 rounded-lg border border-border bg-card space-y-2">
+          <div key={v.id} className="rounded-lg bg-card p-3 space-y-2 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Globe className="size-4 text-muted-foreground" />
@@ -187,7 +186,12 @@ const VHostManager = ({ version }: { version: string }) => {
         ))}
         {vhosts.length === 0 && <p className="text-sm text-muted-foreground py-4">{t('RuntimeDetail.NoSites')}</p>}
       </div>
-      <Card><CardHeader className="py-2"><CardTitle className="text-xs font-medium flex items-center gap-1"><FileText className="size-3.5" /> /etc/hosts</CardTitle></CardHeader><CardContent className="p-2"><pre className="text-xs font-mono max-h-32 overflow-auto whitespace-pre-wrap bg-code-bg p-2 rounded-lg">{hostsContent || t('Common.Loading')}</pre></CardContent></Card>
+      <div className="rounded-xl bg-card shadow-sm">
+        <div className="border-b bg-muted/30 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 flex items-center gap-1.5">
+          <FileText className="size-3.5" /> /etc/hosts
+        </div>
+        <pre className="text-xs font-mono max-h-32 overflow-auto whitespace-pre-wrap bg-code-bg p-2 rounded-b-xl">{hostsContent || t('Common.Loading')}</pre>
+      </div>
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader className="pr-10">
@@ -201,7 +205,7 @@ const VHostManager = ({ version }: { version: string }) => {
               </pre>
             )}
             <textarea
-              className="h-[48vh] w-full resize-y rounded-lg border border-border border-border bg-code-bg p-3 font-mono text-xs"
+              className="h-[48vh] w-full resize-y rounded-lg border bg-code-bg p-3 font-mono text-xs"
               value={configContent}
               onChange={e => setConfigContent(e.target.value)}
               spellCheck={false}

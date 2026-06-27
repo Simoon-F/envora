@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/i18n/use-translation';
 import type { ShellEnvironmentStatus } from '@/types/settings';
@@ -22,15 +22,13 @@ export const ShellEnvironmentSettings = ({
   const { t } = useTranslation();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Terminal className="size-4" />
-          {t('Settings', 'ShellEnvironment')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
+    <Card size="sm" className="card-subtle mt-4">
+      <CardContent className="p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Terminal className="size-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium">{t('Settings', 'ShellEnvironment')}</h3>
+        </div>
+        <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Badge variant={shellEnv?.is_installed ? 'success' : 'secondary'}>
               {shellEnv?.is_installed ? t('Settings', 'Installed') : t('Settings', 'NotInstalled')}
@@ -48,15 +46,15 @@ export const ShellEnvironmentSettings = ({
 
           <div>
             <Label className="text-xs text-muted-foreground">{t('Settings', 'CommandDirectory')}</Label>
-            <p className="mt-1 break-all rounded-md bg-code-bg px-2 py-1 font-mono text-xs">{shellEnv?.bin_dir ?? binDir ?? '-'}</p>
+            <p className="mt-1 break-all rounded-md bg-code-bg px-2 py-1.5 font-mono text-xs">{shellEnv?.bin_dir ?? binDir ?? '-'}</p>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">{t('Settings', 'EnvironmentScript')}</Label>
-            <p className="mt-1 break-all rounded-md bg-code-bg px-2 py-1 font-mono text-xs">{shellEnv?.env_script ?? '-'}</p>
+            <p className="mt-1 break-all rounded-md bg-code-bg px-2 py-1.5 font-mono text-xs">{shellEnv?.env_script ?? '-'}</p>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">{t('Settings', 'ShellProfile')}</Label>
-            <p className="mt-1 break-all rounded-md bg-code-bg px-2 py-1 font-mono text-xs">{shellEnv?.shell_profile ?? '-'}</p>
+            <p className="mt-1 break-all rounded-md bg-code-bg px-2 py-1.5 font-mono text-xs">{shellEnv?.shell_profile ?? '-'}</p>
           </div>
 
           <Button size="sm" onClick={onInstall} disabled={isInstalling}>

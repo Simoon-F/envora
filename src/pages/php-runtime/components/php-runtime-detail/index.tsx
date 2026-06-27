@@ -411,7 +411,7 @@ export const PhpRuntimeDetail = () => {
     : `~/.envora/runtimes/php/${defaultVer || '{version}'}/lib/php.ini`;
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-5 space-y-3">
       <RuntimeHeader
         icon={<PhpIcon className="size-9" />}
         name="PHP"

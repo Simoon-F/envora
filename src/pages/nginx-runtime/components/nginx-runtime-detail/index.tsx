@@ -326,7 +326,7 @@ export const NginxRuntimeDetail = () => {
   const ver = defaultVersion || installed?.[0]?.version || '';
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-5 space-y-3">
       <RuntimeHeader
         icon={<NginxIcon className="size-9" />}
         name="Nginx"
