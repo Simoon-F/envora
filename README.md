@@ -43,15 +43,6 @@ tooling visible without replacing the command-line workflows they already use.
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
 
-## At A Glance
-
-| Area | What you get |
-| --- | --- |
-| Runtime Management | Install and switch versions of runtimes — currently PHP, Nginx, MySQL, Java, Node.js, and Go, with more on the way. |
-| Service Operations | Start, stop, restart, and inspect local services with status, ports, and logs. |
-| Configuration & Sites | Edit `php.ini`, `nginx.conf`, virtual hosts, and `my.cnf`; manage hosts entries and MySQL. |
-| Toolchain Utilities | Composer, npm/Corepack, and Go environment tooling in one place. |
-
 ## Product Positioning
 
 Modern local development environments are often assembled from package
@@ -74,8 +65,7 @@ and runtime directories inspectable.
 ### Runtime Management
 
 - Install and manage multiple versions of runtimes through a pluggable provider
-  system — currently PHP, Nginx, MySQL, Java, Node.js, and Go, with more
-  runtimes being added over time.
+  system — currently PHP, Nginx, MySQL, Java, Node.js, and Go.
 - Set default runtime versions and expose runtime commands through Envora's
   managed `bin` directory.
 - Track install progress and long-running operations across navigation.
@@ -113,18 +103,18 @@ and runtime directories inspectable.
 
 ## Supported Runtimes And Tools
 
-| Runtime or tool | Current behavior |
-| --- | --- |
-| PHP | macOS packages from `envora-runtime-packages`; Windows packages from official archives |
-| Nginx | Source download and local build flow |
-| MySQL | MySQL Community Server archive installation |
-| Java | Eclipse Temurin JDK discovery and installation through the Adoptium API, with `JAVA_HOME` support |
-| Node.js | Official Node.js binary archives, including `node`, `npm`, `npx`, and `corepack` |
-| npm | Follows the selected Node.js runtime |
-| pnpm, Yarn | Managed through Corepack where available |
-| Go | Stable Go archives from the official Go release index, with `GOROOT`, `GOPATH`, cache, and tooling support |
-| Composer | Envora-managed Composer installation plus system Composer detection |
-| Rust | Planned |
+Already supported:
+
+- ✅ PHP
+- ✅ Nginx
+- ✅ MySQL
+- ✅ Java
+- ✅ Node.js (with npm, npx, corepack)
+- ✅ pnpm, Yarn (via Corepack)
+- ✅ Go
+- ✅ Composer
+
+We plan to add support for more environments over time.
 
 Runtime release and packaging notes are documented in
 [docs/release-runtimes.md](docs/release-runtimes.md).
@@ -249,7 +239,7 @@ pnpm tauri build
 
 **Done**
 
-- Runtime management via a pluggable provider system (PHP, Nginx, MySQL, Java, Node.js, Go so far).
+- Runtime management via a pluggable provider system (PHP, Nginx, MySQL, Java, Node.js, Go).
 - Service lifecycle (start, stop, restart, logs) from the dashboard.
 - Configuration editing for `php.ini`, `nginx.conf`, virtual hosts, and `my.cnf`.
 - Composer toolchain management with system Composer detection.
