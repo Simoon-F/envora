@@ -36,10 +36,8 @@ export const RuntimeItem = ({ runtime, selected, onSelect }: RuntimeItemProps) =
       )}
       <span
         className={cn(
-          'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition-colors',
-          selected
-            ? 'border-primary/30 bg-primary/10 text-primary'
-            : 'border-border bg-card text-muted-foreground group-hover:text-foreground',
+          'flex h-9 w-9 shrink-0 items-center justify-center',
+          selected ? 'text-primary' : 'text-muted-foreground',
         )}
       >
         {runtime.icon}

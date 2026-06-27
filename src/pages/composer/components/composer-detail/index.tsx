@@ -10,6 +10,7 @@ import { useTranslation } from '@/i18n/use-translation';
 import { tauriInvoke } from '@/lib/tauri';
 import { DetailTabs } from '@/components/runtime/detail-tabs';
 import { RuntimeHeader } from '@/components/runtime/runtime-header';
+import { ComposerIcon } from '@/components/runtime/runtime-icons';
 import { listen } from '@tauri-apps/api/event';
 import {
   AlertTriangle,
@@ -20,7 +21,6 @@ import {
   Play,
   RefreshCw,
   Save,
-  Settings2,
   Terminal,
   Wrench,
 } from 'lucide-react';
@@ -592,7 +592,7 @@ export const ComposerDetail = () => {
   return (
     <div className="p-6 space-y-6">
       <RuntimeHeader
-        icon={<Settings2 className="size-5" />}
+        icon={<ComposerIcon className="size-9" />}
         name="Composer"
         actions={<Badge variant="outline">{t('Composer', 'DependencyManager')}</Badge>}
       />

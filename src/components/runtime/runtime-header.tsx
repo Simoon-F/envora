@@ -24,7 +24,7 @@ export const RuntimeHeader = ({
       <div className="flex items-center gap-3">
         <span
           className={cn(
-            'flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-foreground',
+            'flex h-12 w-12 items-center justify-center text-foreground',
             'shrink-0',
           )}
         >

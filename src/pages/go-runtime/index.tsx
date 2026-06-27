@@ -14,7 +14,7 @@ export const GoRuntime = () => {
   return (
     <div className="space-y-6 p-6">
       <RuntimeHeader
-        icon={<RuntimeIcon type="go" className="h-5 w-10" />}
+        icon={<RuntimeIcon type="go" className="size-9" />}
         name="Go"
         version={currentVersion}
         actions={

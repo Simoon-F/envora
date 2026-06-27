@@ -14,7 +14,7 @@ export const JavaRuntime = () => {
   return (
     <div className="space-y-6 p-6">
       <RuntimeHeader
-        icon={<JavaIcon className="size-5" />}
+        icon={<JavaIcon className="size-9" />}
         name="Java"
         version={currentVersion}
         actions={

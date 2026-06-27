@@ -14,7 +14,7 @@ export const NodeRuntime = () => {
   return (
     <div className="space-y-6 p-6">
       <RuntimeHeader
-        icon={<NodeIcon className="size-5" />}
+        icon={<NodeIcon className="size-9" />}
         name="Node.js"
         version={currentVersion}
         actions={

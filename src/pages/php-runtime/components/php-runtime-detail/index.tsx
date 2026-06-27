@@ -413,7 +413,7 @@ export const PhpRuntimeDetail = () => {
   return (
     <div className="p-6 space-y-4">
       <RuntimeHeader
-        icon={<PhpIcon className="size-5" />}
+        icon={<PhpIcon className="size-9" />}
         name="PHP"
         version={defaultVer}
         actions={defaultVer ? <Badge variant="outline">{t('Common', 'DefaultValue', { value: defaultVer })}</Badge> : undefined}

@@ -13,12 +13,12 @@ import { RuntimeHeader } from '@/components/runtime/runtime-header';
 import { RuntimeItem, type RuntimeItemInfo } from './components/runtime-item';
 
 const runtimes: RuntimeItemInfo[] = [
-  { type: 'php', name: 'PHP', icon: <RuntimeIcon type="php" className="size-4" /> },
-  { type: 'nginx', name: 'Nginx', icon: <RuntimeIcon type="nginx" className="size-4" /> },
-  { type: 'mysql', name: 'MySQL', icon: <RuntimeIcon type="mysql" className="size-4" /> },
-  { type: 'java', name: 'Java', icon: <RuntimeIcon type="java" className="size-4" /> },
-  { type: 'node', name: 'Node.js', icon: <RuntimeIcon type="node" className="size-4" /> },
-  { type: 'go', name: 'Go', icon: <RuntimeIcon type="go" className="h-4 w-9" /> },
+  { type: 'php', name: 'PHP', icon: <RuntimeIcon type="php" className="size-7" /> },
+  { type: 'nginx', name: 'Nginx', icon: <RuntimeIcon type="nginx" className="size-7" /> },
+  { type: 'mysql', name: 'MySQL', icon: <RuntimeIcon type="mysql" className="size-7" /> },
+  { type: 'java', name: 'Java', icon: <RuntimeIcon type="java" className="size-7" /> },
+  { type: 'node', name: 'Node.js', icon: <RuntimeIcon type="node" className="size-7" /> },
+  { type: 'go', name: 'Go', icon: <RuntimeIcon type="go" className="size-7" /> },
 ];
 
 export const Runtimes = () => {

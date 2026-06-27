@@ -231,7 +231,7 @@ export const MysqlRuntimeDetail = () => {
   return (
     <div className="p-6 space-y-4">
       <RuntimeHeader
-        icon={<MysqlIcon className="size-5" />}
+        icon={<MysqlIcon className="size-9" />}
         name="MySQL"
         version={ver}
         actions={ver ? <Badge variant="outline">{t('Common', 'DefaultValue', { value: ver })}</Badge> : undefined}

@@ -328,7 +328,7 @@ export const NginxRuntimeDetail = () => {
   return (
     <div className="p-6 space-y-4">
       <RuntimeHeader
-        icon={<NginxIcon className="size-5" />}
+        icon={<NginxIcon className="size-9" />}
         name="Nginx"
         version={ver}
         actions={ver ? <Badge variant="outline">{t('Common', 'DefaultValue', { value: ver })}</Badge> : undefined}
